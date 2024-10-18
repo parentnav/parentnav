@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Profile</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+    }
+    .sidebar {
+      height: 100vh;
+      width: 220px;
+      background-color: #343a40;
+      position: fixed;
+      padding-top: 20px;
+    }
+    .sidebar a {
+      display: block;
+      color: white;
+      padding: 10px 15px;
+      text-decoration: none;
+    }
+    .sidebar a:hover {
+      background-color: #495057;
+    }
+    .content {
+      margin-left: 240px;
+      padding: 20px;
+    }
+  </style>
+
+  <!-- Firebase Namespaced CDN (Global firebase object) -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+  <script>
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyDpwiZNtTumaXAc_H205dh5XRFfXUJ6q-8",
+      authDomain: "parenting-navigator.firebaseapp.com",
+      databaseURL: "https://parenting-navigator-default-rtdb.firebaseio.com",
+      projectId: "parenting-navigator",
+      storageBucket: "parenting-navigator.appspot.com",
+      messagingSenderId: "434358983426",
+      appId: "1:434358983426:web:276cd82ea411a0056c801b",
+      measurementId: "G-3Y2MVG3D93"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+
+    // Reference Firebase Auth and Database
+    const auth = firebase.auth();
+    const db = firebase.database();
+
+    // Function to load user data
+    function loadUserProfile(userId) {
+      const userRef = db.ref('users/' + userId);
+
+      userRef.once('value').then((snapshot) => {
+        const userData = snapshot.val();
+        if (userData) {
+          document.getElementById('email').value = userData.email;
+          document.getElementById('first_name').value = userData.first_name;
+          document.getElementById('last_name').value = userData.last_name;
+        }
+      });
+    }
+
+    // Function to update user profile data
+    function updateUserProfile() {
+      const user = auth.currentUser;
+      if (user) {
+        const userId = user.uid;
+        const email = document.getElementById('email').value;
+        const firstName = document.getElementById('first_name').value;
+        const lastName = document.getElementById('last_name').value;
+
+        const userRef = db.ref('users/' + userId);
+        userRef.update({
+          email: email,
+          first_name: firstName,
+          last_name: lastName
+        }).then(() => {
+          alert('Profile updated successfully!');
+        }).catch((error) => {
+          console.error('Error updating profile:', error);
+        });
+      } else {
+        alert("You must be logged in to update your profile.");
+      }
+    }
+
+    // Function to log out
+    function logout() {
+      auth.signOut().then(() => {
+        alert('Logged out successfully.');
+        window.location.href = "index.html";  // Redirect to login page
+      }).catch((error) => {
+        console.error('Error logging out:', error);
+      });
+    }
+
+    // On page load, check authentication state and load profile data
+    window.onload = function () {
+      auth.onAuthStateChanged((user) => {
+        if (user) {
+          loadUserProfile(user.uid);  // Load user profile
+        } else {
+          alert('Please log in to view your profile.');
+          window.location.href = "index.html";  // Redirect to login if not authenticated
+        }
+      });
+    }
+  </script>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="calendar.html">Calendar</a>
+    <a href="medical-records.html">Medical Records</a>
+    <a href="development-tips.html">Development Tips</a>
+    <a href="health-tracking.html">Health Tracking</a>
+    <a href="emergency-contact.html">Emergency Contact</a>
+    <a href="feedback.html">Feedback</a>
+    <a href="connect-parents.html">Connect with Parents</a>
+    <a href="help.html">Help</a>
+    <a href="notifications.html">Notifications</a>
+    <a href="profile.html">Profile</a>
+  </div>
+
+  <!-- Main Content -->
+  <div class="content">
+    <h2>My Profile</h2>
+    <form>
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" class="form-control" placeholder="Email" readonly>
+      </div>
+      <div class="form-group">
+        <label for="first_name">First Name</label>
+        <input type="text" id="first_name" class="form-control" placeholder="First Name">
+      </div>
+      <div class="form-group">
+        <label for="last_name">Last Name</label>
+        <input type="text" id="last_name" class="form-control" placeholder="Last Name">
+      </div>
+
+      <button type="button" class="btn btn-primary" onclick="updateUserProfile()">Update Profile</button>
+      <button type="button" class="btn btn-danger" onclick="logout()">Logout</button>
+    </form>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

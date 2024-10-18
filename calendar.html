@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Parenting Navigator - Calendar</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+    }
+    .sidebar {
+      height: 100vh;
+      width: 220px;
+      background-color: #343a40;
+      position: fixed;
+      padding-top: 20px;
+    }
+    .sidebar a {
+      display: block;
+      color: white;
+      padding: 10px 15px;
+      text-decoration: none;
+    }
+    .sidebar a:hover {
+      background-color: #495057;
+    }
+    .calendar-container {
+      margin-left: 240px;
+      padding: 20px;
+    }
+    .month-buttons button {
+      margin: 5px;
+    }
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 10px;
+      text-align: center;
+      margin-top: 20px;
+    }
+    .calendar-grid div {
+      background-color: #f8f9fa;
+      padding: 20px;
+      border-radius: 5px;
+      box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.1);
+      cursor: pointer;
+    }
+    .calendar-grid .event {
+      font-weight: bold;
+      color: #007bff;
+    }
+    /* Modal styling */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-content {
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      width: 400px;
+    }
+    .modal.show {
+      display: flex;
+    }
+  </style>
+
+  <!-- Firebase CDN (Global Firebase Object) -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+
+  <script>
+    // Firebase Configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyDpwiZNtTumaXAc_H205dh5XRFfXUJ6q-8",
+      authDomain: "parenting-navigator.firebaseapp.com",
+      databaseURL: "https://parenting-navigator-default-rtdb.firebaseio.com",
+      projectId: "parenting-navigator",
+      storageBucket: "parenting-navigator.appspot.com",
+      messagingSenderId: "434358983426",
+      appId: "1:434358983426:web:276cd82ea411a0056c801b",
+      measurementId: "G-3Y2MVG3D93"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const auth = firebase.auth();
+
+    const monthNames = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+
+    let selectedDate = null; // To store the selected date for event creation
+
+    // Helper function to get the number of days in a given month
+    function daysInMonth(month, year) {
+      return new Date(year, month + 1, 0).getDate();
+    }
+
+    // Populate the year dropdown with a range of years
+    function populateYearDropdown() {
+      const currentYear = new Date().getFullYear();
+      const yearSelect = document.getElementById('year-select');
+      
+      // Ensure the year dropdown is cleared before populating
+      yearSelect.innerHTML = '';
+      
+      for (let year = currentYear - 10; year <= currentYear + 10; year++) {
+        const option = document.createElement('option');
+        option.value = year;
+        option.textContent = year;
+        if (year === currentYear) {
+          option.selected = true;
+        }
+        yearSelect.appendChild(option);
+      }
+    }
+
+    // Function to load a specific month and year into the calendar
+    function loadMonth(monthIndex) {
+      const year = document.getElementById('year-select').value;
+      const daysCount = daysInMonth(monthIndex, year);
+      const monthName = monthNames[monthIndex];
+
+      // Update the current month title
+      document.getElementById('current-month').textContent = `${monthName} ${year}`;
+
+      // Clear previous calendar grid content
+      const calendarGrid = document.getElementById('calendar-grid');
+      calendarGrid.innerHTML = ''; // Reset grid
+
+      // Populate calendar grid with days for the selected month
+      for (let i = 1; i <= daysCount; i++) {
+        const dayDiv = document.createElement('div');
+        dayDiv.textContent = i;
+        dayDiv.id = `day-${i}`;
+        dayDiv.onclick = () => openEventModal(monthIndex, year, i); // Open modal when a day is clicked
+        calendarGrid.appendChild(dayDiv);
+      }
+
+      // Get logged-in user events from Firebase
+      auth.onAuthStateChanged((user) => {
+        if (user) {
+          const userId = user.uid;
+
+          // Fetch events for the selected month and year from Firebase
+          const eventsRef = db.ref('users/' + userId + '/events/' + year + '/' + monthIndex);
+          eventsRef.once('value').then((snapshot) => {
+            const events = snapshot.val();
+            if (events) {
+              // Populate calendar with events
+              for (const day in events) {
+                const eventDay = document.getElementById(`day-${day}`);
+                const eventData = events[day];
+                const eventSpan = document.createElement('span');
+                eventSpan.classList.add('event');
+                eventSpan.textContent = eventData.title;
+                eventDay.appendChild(document.createElement('br')); // Line break
+                eventDay.appendChild(eventSpan);
+              }
+            }
+          });
+        } else {
+          alert("Please log in to view events.");
+          window.location.href = "index.html";
+        }
+      });
+    }
+
+    // Function to open the event creation modal
+    function openEventModal(monthIndex, year, day) {
+      selectedDate = { monthIndex, year, day };
+      document.getElementById('event-modal').classList.add('show');
+    }
+
+    // Function to close the event modal
+    function closeEventModal() {
+      document.getElementById('event-modal').classList.remove('show');
+    }
+
+    // Function to add an event
+    function addEvent() {
+      const eventTitle = document.getElementById('event-title').value;
+      if (!eventTitle) {
+        alert("Please enter an event title.");
+        return;
+      }
+
+      const { monthIndex, year, day } = selectedDate;
+
+      auth.onAuthStateChanged((user) => {
+        if (user) {
+          const userId = user.uid;
+
+          // Save event to Firebase
+          const eventRef = db.ref(`users/${userId}/events/${year}/${monthIndex}/${day}`);
+          eventRef.set({
+            title: eventTitle
+          }).then(() => {
+            // After saving, reload the month and close the modal
+            loadMonth(monthIndex);
+            closeEventModal();
+          });
+        }
+      });
+    }
+
+    // Add event listeners for month buttons
+    function addMonthButtonListeners() {
+      document.querySelectorAll('.month-buttons button').forEach((button, index) => {
+        button.addEventListener('click', () => loadMonth(index));
+      });
+    }
+
+    // Load the default month (e.g., September) and populate year dropdown on page load
+    document.addEventListener("DOMContentLoaded", function () {
+      populateYearDropdown();
+      addMonthButtonListeners();
+      loadMonth(8);  // September as default
+    });
+  </script>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="calendar.html">Calendar</a>
+    <a href="medical-records.html">Medical Records</a>
+    <a href="development-tips.html">Development Tips</a>
+    <a href="health-tracking.html">Health Tracking</a>
+    <a href="emergency-contact.html">Emergency Contact</a>
+    <a href="feedback.html">Feedback</a>
+    <a href="connect-parents.html">Connect with Parents</a>
+    <a href="help.html">Help</a>
+    <a href="notifications.html">Notifications</a>
+    <a href="profile.html">Profile</a>
+  </div>
+
+  <!-- Calendar Content -->
+  <div class="calendar-container">
+    <h2>Select a Year</h2>
+    <select id="year-select" class="form-control" style="width: 200px; display: inline-block;">
+      <!-- Year options will be populated dynamically -->
+    </select>
+
+    <h2 class="mt-3">Select a Month</h2>
+    <div class="month-buttons">
+      <button class="btn btn-primary">January</button>
+      <button class="btn btn-primary">February</button>
+      <button class="btn btn-primary">March</button>
+      <button class="btn btn-primary">April</button>
+      <button class="btn btn-primary">May</button>
+      <button class="btn btn-primary">June</button>
+      <button class="btn btn-primary">July</button>
+      <button class="btn btn-primary">August</button>
+      <button class="btn btn-primary">September</button>
+      <button class="btn btn-primary">October</button>
+      <button class="btn btn-primary">November</button>
+      <button class="btn btn-primary">December</button>
+    </div>
+
+    <h3 class="mt-4" id="current-month">September 2024</h3>
+    <div id="calendar-grid" class="calendar-grid">
+      <!-- Calendar days will be inserted dynamically here -->
+    </div>
+  </div>
+
+  <!-- Modal for adding events -->
+  <div id="event-modal" class="modal">
+    <div class="modal-content">
+      <h5>Add Event</h5>
+      <input type="text" id="event-title" class="form-control" placeholder="Event Title">
+      <br>
+      <button class="btn btn-success" onclick="addEvent()">Save Event</button>
+      <button class="btn btn-secondary" onclick="closeEventModal()">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

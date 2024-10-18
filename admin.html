@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
+  <style>
+    .sidebar {
+      height: 100vh;
+      width: 220px;
+      background-color: #343a40;
+      position: fixed;
+      padding-top: 20px;
+    }
+    .sidebar a {
+      display: block;
+      color: white;
+      padding: 10px 15px;
+      text-decoration: none;
+    }
+    .sidebar a:hover {
+      background-color: #495057;
+    }
+    .content {
+      margin-left: 240px;
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <a href="#" onclick="showSection('users')">Users</a>
+    <a href="#" onclick="showSection('feedback')">Feedback</a>
+    <a href="#" onclick="showSection('tips')">Development Tips</a>
+    <a href="#" onclick="showSection('tasks')">Tasks</a>
+    <a href="#" onclick="showSection('health')">Health Tracking</a>
+    <a href="#" onclick="logout()">Logout</a>
+  </div>
+
+  <!-- Main Content -->
+  <div class="content">
+    <!-- Users Table -->
+    <div id="users-section" class="section">
+      <h3>Users</h3>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="users-table">
+          <!-- Users data will be loaded here dynamically -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Feedback Table -->
+    <div id="feedback-section" class="section">
+      <h3>Feedback</h3>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Feedback</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="feedback-table">
+          <!-- Feedback data will be loaded here dynamically -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Development Tips Table -->
+    <div id="tips-section" class="section">
+      <h3>Development Tips</h3>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Description</th>
+            <th>Link</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tips-table">
+          <!-- Development tips data will be loaded here dynamically -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Tasks Table -->
+    <div id="tasks-section" class="section">
+      <h3>Tasks</h3>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Description</th>
+            <th>Due Date</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tasks-table">
+          <!-- Tasks data will be loaded here dynamically -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Health Tracking Table -->
+    <div id="health-section" class="section">
+      <h3>Health Tracking</h3>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Child Name</th>
+            <th>Child Age</th>
+            <th>Sleep Schedule</th>
+            <th>Feeding</th>
+            <th>Diet</th>
+            <th>Notes</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="health-table">
+          <!-- Health data will be loaded here dynamically -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Firebase Integration and Script -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script>
+    // Firebase Configuration
+    const firebaseConfig = {
+    apiKey: "AIzaSyDpwiZNtTumaXAc_H205dh5XRFfXUJ6q-8",
+    authDomain: "parenting-navigator.firebaseapp.com",
+    databaseURL: "https://parenting-navigator-default-rtdb.firebaseio.com",
+    projectId: "parenting-navigator",
+    storageBucket: "parenting-navigator.appspot.com",
+    messagingSenderId: "434358983426",
+    appId: "1:434358983426:web:276cd82ea411a0056c801b",
+    measurementId: "G-3Y2MVG3D93"
+  };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Function to show specific section
+    function showSection(sectionId) {
+      const sections = document.querySelectorAll('.section');
+      sections.forEach(section => section.style.display = 'none');
+      document.getElementById(`${sectionId}-section`).style.display = 'block';
+      loadData(sectionId);
+    }
+
+    // Load Data from Firebase
+    function loadData(sectionId) {
+      let refPath = '';
+      switch(sectionId) {
+        case 'users': refPath = 'users'; break;
+        case 'feedback': refPath = 'feedback'; break;
+        case 'tips': refPath = 'developmentTips'; break;
+        case 'tasks': refPath = 'tasks'; break;
+        case 'health': refPath = 'healthTracking'; break;
+      }
+
+      const ref = db.ref(refPath);
+      ref.once('value', (snapshot) => {
+        const data = snapshot.val();
+        const tableBody = document.getElementById(`${sectionId}-table`);
+        tableBody.innerHTML = '';
+
+        for (const key in data) {
+          const row = `<tr>
+            ${getTableRow(data[key], sectionId)}
+            <td>
+              <button onclick="editEntry('${key}', '${sectionId}')" class="btn btn-warning">Edit</button>
+              <button onclick="deleteEntry('${key}', '${sectionId}')" class="btn btn-danger">Delete</button>
+            </td>
+          </tr>`;
+          tableBody.innerHTML += row;
+        }
+      });
+    }
+
+    // Get Table Row based on Section
+    function getTableRow(data, sectionId) {
+      switch(sectionId) {
+        case 'users':
+          return `<td>${data.name}</td><td>${data.email}</td>`;
+        case 'feedback':
+          return `<td>${data.name}</td><td>${data.email}</td><td>${data.feedback}</td>`;
+        case 'tips':
+          return `<td>${data.title}</td><td>${data.description}</td><td><a href="${data.link}" target="_blank">Link</a></td>`;
+        case 'tasks':
+          return `<td>${data.title}</td><td>${data.description}</td><td>${data.dueDate}</td><td>${data.status}</td>`;
+        case 'health':
+          return `<td>${data.childName}</td><td>${data.childAge}</td><td>${data.sleepSchedule}</td><td>${data.feeding}</td><td>${data.diet}</td><td>${data.notes}</td>`;
+      }
+    }
+
+    // Edit Entry
+    function editEntry(key, sectionId) {
+      // Implement edit functionality for each section
+    }
+
+    // Delete Entry
+    function deleteEntry(key, sectionId) {
+      const refPath = `${sectionId}/${key}`;
+      db.ref(refPath).remove().then(() => {
+        loadData(sectionId);
+      }).catch(error => console.error(error));
+    }
+
+    // Logout
+    function logout() {
+      firebase.auth().signOut().then(() => {
+        window.location.href = 'index.html';
+      });
+    }
+
+    // Load default section on page load
+    window.onload = () => showSection('users');
+  </script>
+</body>
+</html>

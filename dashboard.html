@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Parenting Navigator Dashboard</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <style>
+    .dashboard-container {
+      margin-top: 30px;
+    }
+    .card {
+      margin-bottom: 20px;
+    }
+    .welcome-banner {
+      background-color: #e7f3fe;
+      padding: 20px;
+      border-radius: 5px;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .section-title {
+      font-size: 1.2rem;
+      font-weight: bold;
+      margin-bottom: 15px;
+    }
+    .sidebar {
+      height: 100vh;
+      width: 220px;
+      background-color: #343a40;
+      position: fixed;
+      padding-top: 20px;
+    }
+    .sidebar a {
+      display: block;
+      color: white;
+      padding: 10px 15px;
+      text-decoration: none;
+    }
+    .sidebar a:hover {
+      background-color: #495057;
+    }
+    .main-content {
+      margin-left: 240px;
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="calendar.html">Calendar</a>
+    <a href="medical-records.html">Medical Records</a>
+    <a href="development-tips.html">Development Tips</a>
+    <a href="health-tracking.html">Health Tracking</a>
+    <a href="emergency-contact.html">Emergency Contact</a>
+    <a href="feedback.html">Feedback</a>
+    <a href="connect-parents.html">Connect with Parents</a>
+    <a href="help.html">Help</a>
+    <a href="notifications.html">Notifications</a>
+    <a href="profile.html">Profile</a>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <div class="welcome-banner">
+      <h3>Welcome to the Parenting Support App!</h3>
+      <p>We’re glad to have you here. Start by exploring the features on the sidebar or view your upcoming events and tasks below.</p>
+    </div>
+
+    <div class="dashboard-container">
+      <div class="row">
+        <!-- Upcoming Events Section -->
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header">
+              <h4>Upcoming Events</h4>
+            </div>
+            <ul class="list-group list-group-flush" id="upcoming-events">
+              <!-- Events will be injected dynamically -->
+            </ul>
+          </div>
+        </div>
+
+        <!-- Tasks Section -->
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header">
+              <h4>Tasks</h4>
+            </div>
+            <ul class="list-group list-group-flush" id="tasks-list">
+              <!-- Tasks will be injected dynamically -->
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <!-- Recent Updates Section -->
+        <div class="col-md-12">
+          <div class="card">
+            <div class="card-header">
+              <h4>Recent Updates</h4>
+            </div>
+            <ul class="list-group list-group-flush" id="updates-list">
+              <!-- Recent updates will be injected dynamically -->
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK and Initialization -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js"></script>
+
+  <script>
+    // Firebase Configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyDpwiZNtTumaXAc_H205dh5XRFfXUJ6q-8",
+      authDomain: "parenting-navigator.firebaseapp.com",
+      databaseURL: "https://parenting-navigator-default-rtdb.firebaseio.com",
+      projectId: "parenting-navigator",
+      storageBucket: "parenting-navigator.appspot.com",
+      messagingSenderId: "434358983426",
+      appId: "1:434358983426:web:276cd82ea411a0056c801b",
+      measurementId: "G-3Y2MVG3D93"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Fetch the current user's ID (this is hardcoded for now, you can make it dynamic later)
+    const userId = "Ye98BtBlhDgddgTMrFiAtYxiRck2";  // Replace with dynamic userId in production
+
+    // Reference to user's data
+    const userRef = db.ref('users/' + userId);
+
+    // Function to load data dynamically into dashboard
+    function loadDashboardData() {
+      userRef.once('value').then((snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          // Populate Upcoming Events
+          const events = data.events || {};
+          const eventsList = document.getElementById('upcoming-events');
+          eventsList.innerHTML = '';  // Clear previous events
+          for (const eventId in events) {
+            const event = events[eventId];
+            const eventItem = document.createElement('li');
+            eventItem.classList.add('list-group-item');
+            eventItem.textContent = `${event.title} - ${event.date}`;
+            eventsList.appendChild(eventItem);
+          }
+
+          // Populate Tasks
+          const tasks = data.tasks || {};
+          const tasksList = document.getElementById('tasks-list');
+          tasksList.innerHTML = '';  // Clear previous tasks
+          for (const taskId in tasks) {
+            const task = tasks[taskId];
+            const taskItem = document.createElement('li');
+            taskItem.classList.add('list-group-item');
+            taskItem.textContent = `${task.title} - ${task.status}`;
+            tasksList.appendChild(taskItem);
+          }
+
+          // Populate Recent Updates
+          const updates = data.updates || {};
+          const updatesList = document.getElementById('updates-list');
+          updatesList.innerHTML = '';  // Clear previous updates
+          if (Object.keys(updates).length > 0) {
+            for (const updateId in updates) {
+              const update = updates[updateId];
+              const updateItem = document.createElement('li');
+              updateItem.classList.add('list-group-item');
+              updateItem.textContent = update.message;
+              updatesList.appendChild(updateItem);
+            }
+          } else {
+            const noUpdateItem = document.createElement('li');
+            noUpdateItem.classList.add('list-group-item');
+            noUpdateItem.textContent = "No recent updates at the moment.";
+            updatesList.appendChild(noUpdateItem);
+          }
+        }
+      }).catch((error) => {
+        console.error("Error loading dashboard data:", error);
+      });
+    }
+
+    // Load the dashboard data once the page loads
+    document.addEventListener("DOMContentLoaded", loadDashboardData);
+  </script>
+
+</body>
+</html>

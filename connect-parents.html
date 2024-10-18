@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connect with Parents</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+    }
+    .sidebar {
+      height: 100vh;
+      width: 220px;
+      background-color: #343a40;
+      position: fixed;
+      padding-top: 20px;
+    }
+    .sidebar a {
+      display: block;
+      color: white;
+      padding: 10px 15px;
+      text-decoration: none;
+    }
+    .sidebar a:hover {
+      background-color: #495057;
+    }
+    .content {
+      margin-left: 240px;
+      padding: 20px;
+    }
+    .parent-card {
+      margin-bottom: 20px;
+      background-color: #f8f9fa;
+      padding: 15px;
+      border-radius: 10px;
+      text-align: center;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    .parent-card img {
+      border-radius: 50%;
+      margin-bottom: 10px;
+    }
+    .chat-container {
+      margin-top: 20px;
+    }
+    .chat-box {
+      max-height: 300px;
+      overflow-y: auto;
+      background-color: #e9ecef;
+      padding: 15px;
+      border-radius: 10px;
+    }
+  </style>
+
+  <!-- Firebase Namespaced CDN (Global firebase object) -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+  <script>
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyDpwiZNtTumaXAc_H205dh5XRFfXUJ6q-8",
+      authDomain: "parenting-navigator.firebaseapp.com",
+      databaseURL: "https://parenting-navigator-default-rtdb.firebaseio.com",
+      projectId: "parenting-navigator",
+      storageBucket: "parenting-navigator.appspot.com",
+      messagingSenderId: "434358983426",
+      appId: "1:434358983426:web:276cd82ea411a0056c801b",
+      measurementId: "G-3Y2MVG3D93"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const auth = firebase.auth();
+
+    let currentChatUserId = null; // Current chat with parent
+
+    // Load parent profiles from Firebase, excluding the logged-in parent
+    function loadParentProfiles() {
+      const user = auth.currentUser;
+      if (!user) return;
+      const currentUserId = user.uid;
+
+      const parentProfilesRef = db.ref('parents/');
+      parentProfilesRef.once('value').then((snapshot) => {
+        const parentsData = snapshot.val();
+        const profileContainer = document.getElementById('parent-profiles');
+        profileContainer.innerHTML = ''; // Clear existing content
+
+        if (parentsData) {
+          for (const parentId in parentsData) {
+            // Exclude the current logged-in parent
+            if (parentId !== currentUserId) {
+              const parent = parentsData[parentId];
+              const parentCard = document.createElement('div');
+              parentCard.classList.add('col-md-4', 'parent-card');
+              parentCard.innerHTML = `
+                <img src="${parent.photo}" class="rounded-circle" alt="${parent.name}" width="150" height="150">
+                <h5>${parent.name}</h5>
+                <p>${parent.description}</p>
+                <button class="btn btn-primary" onclick="startChat('${parentId}', '${parent.name}')">Message</button>
+              `;
+              profileContainer.appendChild(parentCard);
+            }
+          }
+        } else {
+          profileContainer.innerHTML = `<p>No parents found.</p>`;
+        }
+      }).catch((error) => {
+        console.error("Error loading parent profiles:", error);
+      });
+    }
+
+    // Start a chat with the selected parent
+    function startChat(parentId, parentName) {
+      currentChatUserId = parentId;
+      document.getElementById('chat-header').textContent = `Chat with ${parentName}`;
+      document.getElementById('chat-container').style.display = 'block';
+      loadChatMessages(parentId); // Load chat messages
+    }
+
+    // Load chat messages between the current user and the selected parent
+    function loadChatMessages(parentId) {
+      const user = auth.currentUser;
+      if (!user) return;
+      const chatRef = db.ref(`chats/${user.uid}_${parentId}`);
+
+      chatRef.on('value', (snapshot) => {
+        const messages = snapshot.val();
+        const chatBox = document.getElementById('chat-box');
+        chatBox.innerHTML = ''; // Clear previous messages
+
+        if (messages) {
+          for (const msgId in messages) {
+            const msg = messages[msgId];
+            const msgDiv = document.createElement('div');
+            msgDiv.textContent = `${msg.senderName}: ${msg.message}`;
+            chatBox.appendChild(msgDiv);
+          }
+        } else {
+          chatBox.innerHTML = `<p>No messages yet.</p>`;
+        }
+      });
+    }
+
+    // Send a new chat message
+    function sendMessage() {
+      const messageInput = document.getElementById('message-input');
+      const message = messageInput.value;
+      const user = auth.currentUser;
+
+      if (message && currentChatUserId) {
+        const chatRef = db.ref(`chats/${user.uid}_${currentChatUserId}`);
+        const newMessageRef = chatRef.push();
+
+        newMessageRef.set({
+          senderName: user.displayName || 'Anonymous',
+          message: message,
+          timestamp: Date.now()
+        });
+
+        messageInput.value = ''; // Clear the input field
+      }
+    }
+
+    // On page load, check authentication state and load profiles
+    window.onload = function () {
+      auth.onAuthStateChanged((user) => {
+        if (user) {
+          loadParentProfiles();  // Load parent profiles
+        } else {
+          alert('Please log in to connect with parents.');
+          window.location.href = "index.html";  // Redirect to login if not authenticated
+        }
+      });
+    }
+  </script>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="calendar.html">Calendar</a>
+    <a href="medical-records.html">Medical Records</a>
+    <a href="development-tips.html">Development Tips</a>
+    <a href="health-tracking.html">Health Tracking</a>
+    <a href="emergency-contact.html">Emergency Contact</a>
+    <a href="feedback.html">Feedback</a>
+    <a href="connect-parents.html">Connect with Parents</a>
+    <a href="help.html">Help</a>
+    <a href="notifications.html">Notifications</a>
+    <a href="profile.html">Profile</a>
+  </div>
+
+  <!-- Main Content -->
+  <div class="content">
+    <h2>Connect with Parents</h2>
+
+    <div class="row" id="parent-profiles">
+      <!-- Parent profiles will be dynamically loaded here -->
+    </div>
+
+    <!-- Chat Section -->
+    <div id="chat-container" class="chat-container" style="display: none;">
+      <h4 id="chat-header">Chat with Parent</h4>
+      <div id="chat-box" class="chat-box">
+        <!-- Chat messages will be dynamically loaded here -->
+      </div>
+      <div class="input-group mt-3">
+        <input type="text" id="message-input" class="form-control" placeholder="Type a message...">
+        <div class="input-group-append">
+          <button class="btn btn-primary" onclick="sendMessage()">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

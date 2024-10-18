@@ -1,0 +1,144 @@
+{
+  "developmentTips": {
+    "tip1": {
+      "description": "Play is crucial for child development. It helps improve cognitive and physical skills.",
+      "link": "https://example.com/playtime",
+      "title": "Encourage Playtime"
+    },
+    "tip2": {
+      "description": "Reading enhances language skills, improves concentration, and fosters a love for books.",
+      "link": "https://example.com/reading",
+      "title": "Read Together"
+    },
+    "tip3": {
+      "description": "Encouraging children to try new tasks builds their confidence and problem-solving abilities.",
+      "link": "https://example.com/independence",
+      "title": "Foster Independence"
+    },
+    "tip4": {
+      "description": "A balanced diet supports physical growth and brain development, which is essential for learning.",
+      "link": "https://example.com/nutrition",
+      "title": "Provide Healthy Nutrition"
+    },
+    "tip5": {
+      "description": "Setting boundaries on screen time promotes better social interaction and physical activity.",
+      "link": "https://example.com/screentime",
+      "title": "Limit Screen Time"
+    },
+    "tip6": {
+      "description": "Encourage your child to interact with peers to develop important social and emotional skills.",
+      "link": "https://example.com/socialskills",
+      "title": "Promote Social Skills"
+    },
+    "tip7": {
+      "description": "Offer praise and support to boost your child’s self-esteem and motivation to learn.",
+      "link": "https://example.com/supportive",
+      "title": "Be Supportive"
+    }
+  },
+  "feedback": {
+    "-O9Qd8KV69weFwasST55": {
+      "email": "abc@gmail.com",
+      "feedback": "this is good",
+      "name": "abc"
+    }
+  },
+  "users": {
+    "JJaOm7YD7KVxjNHb4GGWwuQlwdK2": {
+      "auth_uid": "JJaOm7YD7KVxjNHb4GGWwuQlwdK2",
+      "email": "abcd@gmail.com",
+      "first_name": "abcd",
+      "last_name": "efgh",
+      "user_id": 39439
+    },
+    "Ye98BtBlhDgddgTMrFiAtYxiRck2": {
+      "auth_uid": "Ye98BtBlhDgddgTMrFiAtYxiRck2",
+      "children": {
+        "{child_id}": {
+          "age": 4,
+          "child_name": "Jane Doe",
+          "health_records": {
+            "{health_record_id}": {
+              "diet": "Normal",
+              "feeding_schedule": "3 meals per day",
+              "notes": "No known allergies",
+              "sleep_schedule": "8 hours"
+            }
+          },
+          "medical_records": {
+            "{medical_record_id}": {
+              "file_name": "vaccination_record.pdf",
+              "file_url": "https://firebase_storage_link/vaccination_record.pdf",
+              "upload_date": "2023-10-17"
+            }
+          }
+        }
+      },
+      "email": "test3@gmail.com",
+      "emergencyContact": {
+        "email": "abc@gmail.com",
+        "name": "abcd",
+        "phoneNumber": "9999999999",
+        "relation": "brother"
+      },
+      "emergency_contacts": {
+        "{contact_id}": {
+          "email": "emily.davis@example.com",
+          "name": "Emily Davis",
+          "phone_number": "+1234567890",
+          "relation": "Mother"
+        }
+      },
+      "events": {
+        "2024": {
+          "8": {
+            "3": {
+              "title": "abcd"
+            }
+          }
+        },
+        "{event_id}": {
+          "date": "2023-11-10",
+          "description": "Child's annual checkup",
+          "title": "Doctor Appointment",
+          "type": "Health"
+        }
+      },
+      "feedback": {
+        "{feedback_id}": {
+          "feedback_text": "This app is very helpful in keeping track of my child's development",
+          "submitted_on": "2023-10-15"
+        }
+      },
+      "first_name": "qwe",
+      "healthTracking": {
+        "1729184775001": {
+          "childAge": "10",
+          "childName": "kaira",
+          "diet": "milk",
+          "feeding": "milk",
+          "otherNotes": "milk",
+          "sleepSchedule": "8"
+        }
+      },
+      "last_name": "se",
+      "messages": {
+        "{message_id}": {
+          "message_text": "Hey, can we chat about early learning tips?",
+          "receiver_user_id": "{receiver_auth_uid}",
+          "sender_user_id": "Ye98BtBlhDgddgTMrFiAtYxiRck2",
+          "timestamp": "2023-10-16T12:34:56Z"
+        }
+      },
+      "tasks": {
+        "{task_id}": {
+          "description": "Buy new supplies for the upcoming semester",
+          "due_date": "2023-12-01",
+          "status": "Incomplete",
+          "title": "Buy School Supplies"
+        }
+      },
+      "user_id": 43852
+    }
+  }
+}

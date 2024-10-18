@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feedback Page</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+    }
+    .sidebar {
+      height: 100vh;
+      width: 220px;
+      background-color: #343a40;
+      position: fixed;
+      padding-top: 20px;
+    }
+    .sidebar a {
+      display: block;
+      color: white;
+      padding: 10px 15px;
+      text-decoration: none;
+    }
+    .sidebar a:hover {
+      background-color: #495057;
+    }
+    .content {
+      margin-left: 240px;
+      padding: 20px;
+    }
+    .feedback-list {
+      margin-top: 20px;
+    }
+    .feedback-item {
+      padding: 15px;
+      border-bottom: 1px solid #ddd;
+    }
+  </style>
+
+  <!-- Firebase Modular CDN -->
+  <script type="module">
+    // Import Firebase functions you need from the SDKs
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+    import { getDatabase, ref, set, get, push } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyDpwiZNtTumaXAc_H205dh5XRFfXUJ6q-8",
+      authDomain: "parenting-navigator.firebaseapp.com",
+      databaseURL: "https://parenting-navigator-default-rtdb.firebaseio.com",
+      projectId: "parenting-navigator",
+      storageBucket: "parenting-navigator.appspot.com",
+      messagingSenderId: "434358983426",
+      appId: "1:434358983426:web:276cd82ea411a0056c801b",
+      measurementId: "G-3Y2MVG3D93"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app); 
+    const db = getDatabase(app);
+
+    // Check if the user is authenticated and load feedback if logged in
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        loadFeedback();  // Load saved feedbacks if any
+      } else {
+        alert("Please log in to view or submit feedback.");
+        window.location.href = "index.html"; // Redirect to login if not authenticated
+      }
+    });
+
+    // Function to save feedback to Firebase
+    window.saveFeedback = function() {
+      const name = document.getElementById('name').value;
+      const email = document.getElementById('email').value;
+      const feedback = document.getElementById('feedback').value;
+
+      const user = auth.currentUser;
+      if (user) {
+        const feedbackRef = ref(db, 'feedback/');
+        const newFeedbackRef = push(feedbackRef); // Push to create a unique key for each feedback
+
+        // Save the feedback to Firebase
+        set(newFeedbackRef, {
+          name: name,
+          email: email,
+          feedback: feedback
+        }).then(() => {
+          alert("Feedback submitted successfully!");
+          loadFeedback();  // Reload feedback after submitting
+        }).catch((error) => {
+          console.error("Error submitting feedback:", error);
+        });
+      } else {
+        alert("You need to be logged in to submit feedback.");
+      }
+    }
+
+    // Function to load feedback from Firebase
+    window.loadFeedback = function() {
+      const feedbackRef = ref(db, 'feedback/');
+
+      get(feedbackRef).then((snapshot) => {
+        const feedbackList = document.getElementById('feedback-list');
+        feedbackList.innerHTML = ''; // Clear existing feedback
+
+        if (snapshot.exists()) {
+          const feedbackData = snapshot.val();
+          for (const key in feedbackData) {
+            const data = feedbackData[key];
+            const feedbackItem = document.createElement('div');
+            feedbackItem.classList.add('feedback-item');
+            feedbackItem.innerHTML = `
+              <strong>${data.name}</strong>
+              <p>${data.feedback}</p>
+              <small>Email: ${data.email}</small>
+            `;
+            feedbackList.appendChild(feedbackItem);
+          }
+        } else {
+          feedbackList.innerHTML = '<p>No feedback submitted yet.</p>';
+        }
+      }).catch((error) => {
+        console.error("Error loading feedback:", error);
+      });
+    }
+  </script>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="calendar.html">Calendar</a>
+    <a href="medical-records.html">Medical Records</a>
+    <a href="development-tips.html">Development Tips</a>
+    <a href="health-tracking.html">Health Tracking</a>
+    <a href="emergency-contact.html">Emergency Contact</a>
+    <a href="feedback.html">Feedback</a>
+    <a href="connect-parents.html">Connect with Parents</a>
+    <a href="help.html">Help</a>
+    <a href="notifications.html">Notifications</a>
+    <a href="profile.html">Profile</a>
+  </div>
+
+  <!-- Main Content -->
+  <div class="content">
+    <h2>Feedback Page</h2>
+
+    <form id="feedback-form">
+      <div class="form-group">
+        <label for="name">Your Name</label>
+        <input type="text" id="name" class="form-control" placeholder="Enter your name" required>
+      </div>
+      <div class="form-group">
+        <label for="email">Your Email</label>
+        <input type="email" id="email" class="form-control" placeholder="Enter your email" required>
+      </div>
+      <div class="form-group">
+        <label for="feedback">Your Feedback</label>
+        <textarea id="feedback" class="form-control" placeholder="Enter your feedback" rows="3" required></textarea>
+      </div>
+
+      <button type="button" class="btn btn-primary" onclick="saveFeedback()">Submit Feedback</button>
+    </form>
+
+    <div class="feedback-list" id="feedback-list">
+      <!-- Feedback will be loaded dynamically here -->
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

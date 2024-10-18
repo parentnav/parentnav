@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Emergency Contact</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+    }
+    .sidebar {
+      height: 100vh;
+      width: 220px;
+      background-color: #343a40;
+      position: fixed;
+      padding-top: 20px;
+    }
+    .sidebar a {
+      display: block;
+      color: white;
+      padding: 10px 15px;
+      text-decoration: none;
+    }
+    .sidebar a:hover {
+      background-color: #495057;
+    }
+    .content {
+      margin-left: 240px;
+      padding: 20px;
+    }
+  </style>
+
+  <!-- Firebase Modular CDN -->
+  <script type="module">
+    // Import Firebase functions you need from the SDKs
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+    import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyDpwiZNtTumaXAc_H205dh5XRFfXUJ6q-8",
+      authDomain: "parenting-navigator.firebaseapp.com",
+      databaseURL: "https://parenting-navigator-default-rtdb.firebaseio.com",
+      projectId: "parenting-navigator",
+      storageBucket: "parenting-navigator.appspot.com",
+      messagingSenderId: "434358983426",
+      appId: "1:434358983426:web:276cd82ea411a0056c801b",
+      measurementId: "G-3Y2MVG3D93"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app); 
+    const db = getDatabase(app); 
+
+    // Check if the user is authenticated
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        const userId = user.uid;
+        loadEmergencyContact(userId);  // Load saved emergency contact if any
+      } else {
+        alert("Please log in to view or save emergency contact.");
+        window.location.href = "index.html"; // Redirect to login if not authenticated
+      }
+    });
+
+    // Attach save function to window object to make it globally accessible
+    window.saveEmergencyContact = function() {
+      const name = document.getElementById('name').value;
+      const relation = document.getElementById('relation').value;
+      const phoneNumber = document.getElementById('phoneNumber').value;
+      const email = document.getElementById('email').value;
+
+      const user = auth.currentUser;
+      if (user) {
+        const userId = user.uid;
+        const contactRef = ref(db, 'users/' + userId + '/emergencyContact');
+
+        // Save the emergency contact data to Firebase
+        set(contactRef, {
+          name: name,
+          relation: relation,
+          phoneNumber: phoneNumber,
+          email: email
+        }).then(() => {
+          alert("Emergency contact saved successfully!");
+        }).catch((error) => {
+          console.error("Error saving emergency contact:", error);
+        });
+      } else {
+        alert("You need to be logged in to save emergency contact.");
+      }
+    }
+
+    // Function to load emergency contact from Firebase
+    window.loadEmergencyContact = function(userId) {
+      const contactRef = ref(db, 'users/' + userId + '/emergencyContact');
+
+      get(contactRef).then((snapshot) => {
+        if (snapshot.exists()) {
+          const contactData = snapshot.val();
+          document.getElementById('name').value = contactData.name;
+          document.getElementById('relation').value = contactData.relation;
+          document.getElementById('phoneNumber').value = contactData.phoneNumber;
+          document.getElementById('email').value = contactData.email;
+        }
+      }).catch((error) => {
+        console.error("Error loading emergency contact:", error);
+      });
+    }
+  </script>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="calendar.html">Calendar</a>
+    <a href="medical-records.html">Medical Records</a>
+    <a href="development-tips.html">Development Tips</a>
+    <a href="health-tracking.html">Health Tracking</a>
+    <a href="emergency-contact.html">Emergency Contact</a>
+    <a href="feedback.html">Feedback</a>
+    <a href="connect-parents.html">Connect with Parents</a>
+    <a href="help.html">Help</a>
+    <a href="notifications.html">Notifications</a>
+    <a href="profile.html">Profile</a>
+  </div>
+
+  <!-- Main Content -->
+  <div class="content">
+    <h2>Emergency Contact Page</h2>
+
+    <form id="contact-form">
+      <div class="form-group">
+        <label for="name">Name</label>
+        <input type="text" id="name" class="form-control" placeholder="Enter contact's name" required>
+      </div>
+      <div class="form-group">
+        <label for="relation">Relation</label>
+        <input type="text" id="relation" class="form-control" placeholder="Relation (e.g., Guardian, Aunt)" required>
+      </div>
+      <div class="form-group">
+        <label for="phoneNumber">Phone Number</label>
+        <input type="text" id="phoneNumber" class="form-control" placeholder="Enter phone number" required>
+      </div>
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" class="form-control" placeholder="Enter email" required>
+      </div>
+
+      <button type="button" class="btn btn-primary" onclick="saveEmergencyContact()">Save Contact</button>
+    </form>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

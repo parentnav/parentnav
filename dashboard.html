@@ -2,69 +2,80 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Parenting Navigator - Dashboard</title>
+  <!-- Bootstrap CSS -->
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
   
   <style>
+    :root {
+      --sidebar-bg: #2c3e50;
+      --sidebar-hover: #34495e;
+      --sidebar-text: #ecf0f1;
+    }
+
     body {
       margin: 0;
       padding: 0;
+      font-family: Arial, sans-serif;
     }
     .sidebar {
       height: 100vh;
       width: 220px;
-      background-color: #343a40;
+      background-color: var(--sidebar-bg);
       position: fixed;
       padding-top: 20px;
     }
     .sidebar a {
       display: block;
-      color: white;
+      color: var(--sidebar-text);
       padding: 10px 15px;
       text-decoration: none;
+      transition: background-color 0.3s;
     }
     .sidebar a:hover {
-      background-color: #495057;
+      background-color: var(--sidebar-hover);
     }
     .content-container {
       margin-left: 240px;
       padding: 20px;
     }
-    .events, .upcoming-events {
-      margin-top: 20px;
+    .welcome-message {
+      margin-bottom: 30px;
     }
-    /* Modal styling */
-    .modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.5);
-      justify-content: center;
-      align-items: center;
-    }
-    .modal-content {
-      background-color: #fff;
-      padding: 20px;
-      border-radius: 8px;
-      width: 400px;
-    }
-    .modal.show {
+    .card-container {
       display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
     }
-    .modal-footer {
-      display: flex;
-      justify-content: space-between;
+    .event-card {
+      flex: 1 1 calc(33.333% - 20px);
+      max-width: calc(33.333% - 20px);
+      box-sizing: border-box;
+    }
+    @media (max-width: 768px) {
+      .event-card {
+        flex: 1 1 calc(50% - 20px);
+        max-width: calc(50% - 20px);
+      }
+    }
+    @media (max-width: 576px) {
+      .event-card {
+        flex: 1 1 100%;
+        max-width: 100%;
+      }
+    }
+    .btn {
+      margin: 5px;
     }
   </style>
 
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-
+  <!-- Firebase Libraries -->
+  <!-- Firebase App (core SDK) -->
+  <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
+  <!-- Firebase Auth SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
+  <!-- Firebase Database SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-database-compat.js"></script>
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyDpwiZNtTumaXAc_H205dh5XRFfXUJ6q-8",
@@ -77,209 +88,152 @@
       measurementId: "G-3Y2MVG3D93"
     };
 
+    // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     const auth = firebase.auth();
 
-    let selectedEvent = null;
+    let currentUser = null;
+
+    function logout() {
+      auth.signOut().then(() => {
+        window.location.href = "index.html";
+      }).catch((error) => {
+        console.error("Error logging out:", error);
+      });
+    }
+
+    function loadUserData() {
+      auth.onAuthStateChanged((user) => {
+        if (user) {
+          currentUser = user;
+          const userId = user.uid;
+          const userRef = db.ref('users/' + userId);
+          userRef.once('value').then((snapshot) => {
+            const userData = snapshot.val();
+            document.getElementById('welcome-message').textContent = `Welcome to Parenting Navigator, ${userData.first_name}`;
+            loadUpcomingEvents(userId);
+          }).catch((error) => {
+            console.error("Error fetching user data:", error);
+          });
+        } else {
+          console.log("User is not authenticated. Redirecting to login page.");
+          window.location.href = "index.html";
+        }
+      });
+    }
 
     function loadUpcomingEvents(userId) {
-      const upcomingEventsList = document.getElementById('upcoming-events-list');
-      upcomingEventsList.innerHTML = ''; // Clear the list before loading
-
-      const currentDate = new Date();
-      const currentYear = currentDate.getFullYear();
-      const currentMonth = currentDate.getMonth();
-      const currentDay = currentDate.getDate();
-
       const eventsRef = db.ref('users/' + userId + '/events/');
       eventsRef.once('value').then((snapshot) => {
         const events = snapshot.val();
+        const eventArray = [];
+        const currentDate = new Date();
+
         if (events) {
           for (const year in events) {
             for (const month in events[year]) {
               for (const day in events[year][month]) {
-                const eventDate = new Date(year, month, day);
-                if (eventDate >= currentDate) {
-                  const event = events[year][month][day];
-                  const listItem = document.createElement('li');
-                  listItem.textContent = `${event.title} - ${year}-${parseInt(month) + 1}-${day}`;
-                  listItem.classList.add('list-group-item');
-                  upcomingEventsList.appendChild(listItem);
+                const dayEvents = events[year][month][day];
+                if (typeof dayEvents === 'object') {
+                  for (const eventId in dayEvents) {
+                    const event = dayEvents[eventId];
+                    let eventDate;
+                    if (event && typeof event === 'object') {
+                      if (event.startTime && event.startTime !== 'All Day') {
+                        const [startHours, startMinutes] = event.startTime.split(':');
+                        eventDate = new Date(year, month, day, parseInt(startHours), parseInt(startMinutes));
+                      } else {
+                        eventDate = new Date(year, month, day);
+                      }
+                      if (eventDate >= currentDate) {
+                        eventArray.push({
+                          id: eventId,
+                          title: event.title,
+                          date: eventDate,
+                          startTime: event.startTime,
+                          endTime: event.endTime,
+                          year,
+                          month,
+                          day
+                        });
+                      }
+                    }
+                  }
                 }
               }
             }
           }
+
+          // Sort events by date and time
+          eventArray.sort((a, b) => a.date - b.date);
+
+          displayUpcomingEvents(eventArray);
         } else {
-          const noEventItem = document.createElement('li');
-          noEventItem.textContent = "No upcoming events.";
-          noEventItem.classList.add('list-group-item');
-          upcomingEventsList.appendChild(noEventItem);
+          document.getElementById('events-container').innerHTML = '<p>No upcoming events.</p>';
         }
+      }).catch((error) => {
+        console.error("Error fetching events:", error);
       });
     }
 
-    function openManageEventsModal(userId) {
-      loadEvents(userId);
-      document.getElementById('manage-events-modal').classList.add('show');
-    }
+    function displayUpcomingEvents(events) {
+      const container = document.getElementById('events-container');
+      container.innerHTML = '';
 
-    function closeManageEventsModal() {
-      document.getElementById('manage-events-modal').classList.remove('show');
-    }
-
-    function loadEvents(userId) {
-      const eventsList = document.getElementById('events-list');
-      eventsList.innerHTML = ''; // Clear the list before loading
-
-      const eventsRef = db.ref('users/' + userId + '/events/');
-      eventsRef.once('value').then((snapshot) => {
-        const events = snapshot.val();
-        if (events) {
-          for (const year in events) {
-            for (const month in events[year]) {
-              for (const day in events[year][month]) {
-                const event = events[year][month][day];
-                const listItem = document.createElement('li');
-                listItem.classList.add('list-group-item', 'd-flex', 'justify-content-between', 'align-items-center');
-
-                listItem.innerHTML = `
-                  <span>${event.title} - ${year}-${parseInt(month) + 1}-${day}</span>
-                  <div>
-                    <button class="btn btn-warning btn-sm" onclick="openUpdateModal('${userId}', '${year}', '${month}', '${day}', '${event.title}')">Update</button>
-                    <button class="btn btn-danger btn-sm" onclick="openDeleteModal('${userId}', '${year}', '${month}', '${day}')">Delete</button>
-                  </div>
-                `;
-                eventsList.appendChild(listItem);
-              }
-            }
-          }
-        } else {
-          const noEventItem = document.createElement('li');
-          noEventItem.textContent = "No events found.";
-          noEventItem.classList.add('list-group-item');
-          eventsList.appendChild(noEventItem);
-        }
-      });
-    }
-
-    function openUpdateModal(userId, year, month, day, title) {
-      selectedEvent = { userId, year, month, day };
-      document.getElementById('update-event-title').value = title;
-      document.getElementById('update-event-date').value = `${year}-${String(parseInt(month) + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      document.getElementById('update-modal').classList.add('show');
-    }
-
-    function closeUpdateModal() {
-      document.getElementById('update-modal').classList.remove('show');
-    }
-
-    function updateEvent() {
-      const newTitle = document.getElementById('update-event-title').value;
-      const newDate = new Date(document.getElementById('update-event-date').value);
-      const { userId, year, month, day } = selectedEvent;
-
-      if (newTitle.trim() === "") {
-        alert("Event title cannot be empty.");
+      if (events.length === 0) {
+        container.innerHTML = '<p>No upcoming events.</p>';
         return;
       }
 
-      const eventRef = db.ref(`users/${userId}/events/${year}/${month}/${day}`);
-      eventRef.remove().then(() => {
-        const newYear = newDate.getFullYear();
-        const newMonth = newDate.getMonth();
-        const newDay = newDate.getDate();
-        const newEventRef = db.ref(`users/${userId}/events/${newYear}/${newMonth}/${newDay}`);
-        newEventRef.set({ title: newTitle }).then(() => {
-          loadEvents(userId);
-          closeUpdateModal();
-        });
-      });
-    }
+      const cardContainer = document.createElement('div');
+      cardContainer.classList.add('card-container');
 
-    function openDeleteModal(userId, year, month, day) {
-      selectedEvent = { userId, year, month, day };
-      document.getElementById('delete-modal').classList.add('show');
-    }
+      events.forEach((event) => {
+        const card = document.createElement('div');
+        card.classList.add('card', 'event-card');
 
-    function closeDeleteModal() {
-      document.getElementById('delete-modal').classList.remove('show');
-    }
+        const cardBody = document.createElement('div');
+        cardBody.classList.add('card-body');
 
-    function deleteEvent() {
-      const { userId, year, month, day } = selectedEvent;
-      const eventRef = db.ref(`users/${userId}/events/${year}/${month}/${day}`);
+        const title = document.createElement('h5');
+        title.classList.add('card-title');
+        title.textContent = event.title;
 
-      eventRef.remove().then(() => {
-        loadEvents(userId);
-        closeDeleteModal();
-      });
-    }
+        const date = document.createElement('p');
+        date.classList.add('card-text');
+        date.textContent = `Date: ${event.date.toLocaleDateString()}`;
 
-    function loadNotifications(userId) {
-      const notificationsList = document.getElementById('notifications-list');
-      notificationsList.innerHTML = ''; // Clear existing notifications
-
-      const friendRequestsRef = db.ref('friend_requests/' + userId);
-      friendRequestsRef.once('value').then((snapshot) => {
-        const requests = snapshot.val();
-        if (requests) {
-          for (const requestId in requests) {
-            const request = requests[requestId];
-            if (request.status === 'pending') {
-              const listItem = document.createElement('li');
-              listItem.innerHTML = `
-                <span>You have a friend request</span>
-                <button class="btn btn-primary btn-sm" onclick="window.location.href='connect-parents.html'">View</button>
-              `;
-              listItem.classList.add('list-group-item', 'd-flex', 'justify-content-between', 'align-items-center');
-              notificationsList.appendChild(listItem);
-            }
-          }
+        const time = document.createElement('p');
+        time.classList.add('card-text');
+        if (event.startTime && event.startTime !== 'All Day') {
+          time.textContent = `Time: ${event.startTime} - ${event.endTime || ''}`;
+        } else {
+          time.textContent = 'Time: All Day';
         }
+
+        cardBody.appendChild(title);
+        cardBody.appendChild(date);
+        cardBody.appendChild(time);
+
+        card.appendChild(cardBody);
+        cardContainer.appendChild(card);
       });
 
-      const messagesRef = db.ref('messages/' + userId);
-      messagesRef.once('value').then((snapshot) => {
-        const messages = snapshot.val();
-        if (messages) {
-          const listItem = document.createElement('li');
-          listItem.innerHTML = `
-            <span>You have a new message</span>
-            <button class="btn btn-secondary btn-sm" onclick="closeNotificationModal()">Close</button>
-          `;
-          listItem.classList.add('list-group-item', 'd-flex', 'justify-content-between', 'align-items-center');
-          notificationsList.appendChild(listItem);
-        }
-      });
+      container.appendChild(cardContainer);
     }
 
-    function closeNotificationModal() {
-      document.getElementById('notification-modal').classList.remove('show');
+    function goToEventsPage() {
+      window.location.href = "events.html";
     }
 
     document.addEventListener("DOMContentLoaded", function () {
-      auth.onAuthStateChanged((user) => {
-        if (user) {
-          const userId = user.uid;
-          db.ref('users/' + userId).once('value').then((snapshot) => {
-            const userName = snapshot.val().first_name;
-            document.getElementById('welcome-message').textContent = `Welcome to Parenting Navigator, ${userName}!`;
-          });
-          loadUpcomingEvents(userId);
-          loadNotifications(userId);
-
-          // Open the manage events modal when button is clicked
-          document.getElementById('manage-events-btn').addEventListener('click', () => openManageEventsModal(userId));
-        } else {
-          alert("Please log in to view events.");
-          window.location.href = "index.html";
-        }
-      });
+      loadUserData();
     });
   </script>
 </head>
 <body>
+
 
   <!-- Sidebar -->
   <div class="sidebar">
@@ -296,65 +250,21 @@
     <a href="profile.html">Profile</a>
   </div>
 
-  <!-- Content Container -->
+  <!-- Content -->
   <div class="content-container">
-    <h2 id="welcome-message">Welcome to Parenting Navigator!</h2>
+    <h2 id="welcome-message" class="welcome-message">Welcome to Parenting Navigator</h2>
 
-    <h3>Upcoming Events</h3>
-    <ul id="upcoming-events-list" class="list-group">
-      <!-- Upcoming events will be inserted dynamically here -->
-    </ul>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h4>Upcoming Events</h4>
+      <button class="btn btn-success" onclick="goToEventsPage()">Manage Events</button>
+    </div>
 
-    <button id="manage-events-btn" class="btn btn-primary mt-4">Manage Events</button>
-  </div>
-
-  <!-- Manage Events Modal -->
-  <div id="manage-events-modal" class="modal">
-    <div class="modal-content">
-      <h5>Manage Events</h5>
-      <ul id="events-list" class="list-group">
-        <!-- Events will be inserted dynamically here -->
-      </ul>
-      <button class="btn btn-secondary mt-3" onclick="closeManageEventsModal()">Close</button>
+    <div id="events-container">
+      <!-- Event cards will be populated here -->
     </div>
   </div>
 
-  <!-- Update Event Modal -->
-  <div id="update-modal" class="modal">
-    <div class="modal-content">
-      <h5>Update Event</h5>
-      <input type="text" id="update-event-title" class="form-control" placeholder="Event Title">
-      <br>
-      <input type="date" id="update-event-date" class="form-control">
-      <br>
-      <button class="btn btn-success" onclick="updateEvent()">Update Event</button>
-      <button class="btn btn-secondary" onclick="closeUpdateModal()">Cancel</button>
-    </div>
-  </div>
-
-  <!-- Delete Event Modal -->
-  <div id="delete-modal" class="modal">
-    <div class="modal-content">
-      <h5>Are you sure you want to delete this event?</h5>
-      <div class="modal-footer">
-        <button class="btn btn-danger" onclick="deleteEvent()">Delete</button>
-        <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Notification Modal -->
-  <div id="notification-modal" class="modal">
-    <div class="modal-content">
-      <h5>Notifications</h5>
-      <ul id="notifications-list" class="list-group">
-        <!-- Notifications will be dynamically inserted here -->
-      </ul>
-      <button class="btn btn-secondary mt-3" onclick="closeNotificationModal()">Close</button>
-    </div>
-  </div>
-
-  <!-- Bootstrap JS -->
+  <!-- Bootstrap JS (optional, for modal animations) -->
   <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
 

@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Connect with Parents</title>
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
   
@@ -43,6 +42,7 @@
     }
   </style>
 
+  <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
@@ -63,12 +63,41 @@
     const db = firebase.database();
     const auth = firebase.auth();
 
+    // Function to check friend status between current user and another user
+    function checkFriendStatus(currentUserId, otherUserId) {
+      return new Promise((resolve, reject) => {
+        const incomingRequestRef = db.ref(`friend_requests/${currentUserId}/${otherUserId}`);
+        const outgoingRequestRef = db.ref(`friend_requests/${otherUserId}/${currentUserId}`);
+
+        incomingRequestRef.once('value', (incomingSnapshot) => {
+          if (incomingSnapshot.exists()) {
+            resolve({
+              status: incomingSnapshot.val().status,
+              direction: 'incoming',
+              senderId: incomingSnapshot.val().senderId,
+            });
+          } else {
+            outgoingRequestRef.once('value', (outgoingSnapshot) => {
+              if (outgoingSnapshot.exists()) {
+                resolve({
+                  status: outgoingSnapshot.val().status,
+                  direction: 'outgoing',
+                  senderId: outgoingSnapshot.val().senderId,
+                });
+              } else {
+                resolve({ status: null });
+              }
+            }, reject);
+          }
+        }, reject);
+      });
+    }
+
     function loadParentProfiles() {
       auth.onAuthStateChanged((user) => {
         if (user) {
           const currentUserId = user.uid;
           const usersRef = db.ref('users');
-          const friendsRef = db.ref('friend_requests/' + currentUserId);
 
           usersRef.once('value').then((snapshot) => {
             const users = snapshot.val();
@@ -76,52 +105,64 @@
             profileContainer.innerHTML = '';
 
             if (users) {
-              friendsRef.once('value').then((friendsSnapshot) => {
-                const friends = friendsSnapshot.val() || {};
+              for (const userId in users) {
+                if (userId !== currentUserId) {
+                  const userProfile = users[userId];
 
-                for (const userId in users) {
-                  if (userId !== currentUserId) {
-                    const userProfile = users[userId];
-                    const friendStatus = friends[userId] ? friends[userId].status : null;
+                  checkFriendStatus(currentUserId, userId)
+                    .then((friendStatusData) => {
+                      const { status: friendStatus, direction } = friendStatusData;
 
-                    const parentCard = document.createElement('div');
-                    parentCard.classList.add('col-md-4', 'parent-card');
-                    parentCard.innerHTML = `
-                      <h5>${userProfile.first_name} ${userProfile.last_name}</h5>
-                      <p>Email: ${userProfile.email}</p>
-                    `;
+                      const parentCard = document.createElement('div');
+                      parentCard.classList.add('col-md-4', 'parent-card');
+                      parentCard.innerHTML = `
+                        <h5>${userProfile.first_name} ${userProfile.last_name}</h5>
+                        <p>Email: ${userProfile.email}</p>
+                      `;
 
-                    const actionButton = document.createElement('button');
-                    actionButton.classList.add('btn', 'friend-request-btn');
+                      const actionButton = document.createElement('button');
+                      actionButton.classList.add('btn', 'friend-request-btn');
 
-                    if (!friendStatus) {
-                      actionButton.textContent = "Send Friend Request";
-                      actionButton.classList.add('btn-success');
-                      actionButton.onclick = () => {
-                        sendFriendRequest(userId, actionButton);
-                      };
-                    } else if (friendStatus === "pending") {
-                      actionButton.textContent = "Approve";
-                      actionButton.classList.add('btn-warning');
-                      actionButton.onclick = () => approveFriendRequest(userId, actionButton);
+                      if (!friendStatus) {
+                        // No friend request exists
+                        actionButton.textContent = "Send Friend Request";
+                        actionButton.classList.add('btn-success');
+                        actionButton.onclick = () => {
+                          sendFriendRequest(userId, actionButton);
+                        };
+                      } else if (friendStatus === "pending") {
+                        if (direction === 'incoming') {
+                          // Friend request received from other user
+                          actionButton.textContent = "Approve";
+                          actionButton.classList.add('btn-warning');
+                          actionButton.onclick = () => approveFriendRequest(userId, actionButton);
 
-                      const rejectButton = document.createElement('button');
-                      rejectButton.textContent = "Reject";
-                      rejectButton.classList.add('btn', 'btn-danger', 'ml-2', 'btn-space');
-                      rejectButton.onclick = () => rejectFriendRequest(userId, parentCard);
-                      parentCard.appendChild(rejectButton);
+                          const rejectButton = document.createElement('button');
+                          rejectButton.textContent = "Reject";
+                          rejectButton.classList.add('btn', 'btn-danger', 'ml-2', 'btn-space');
+                          rejectButton.onclick = () => rejectFriendRequest(userId, parentCard);
+                          parentCard.appendChild(rejectButton);
+                        } else if (direction === 'outgoing') {
+                          // Friend request sent to other user
+                          actionButton.textContent = "Waiting for Response";
+                          actionButton.classList.add('btn-secondary');
+                          actionButton.disabled = true;
+                        }
+                      } else if (friendStatus === "approved") {
+                        // Friendship approved
+                        actionButton.textContent = "Send Message";
+                        actionButton.classList.add('btn-primary');
+                        actionButton.onclick = () => redirectToMessage(userId);
+                      }
 
-                    } else if (friendStatus === "approved") {
-                      actionButton.textContent = "Send Message";
-                      actionButton.classList.add('btn-primary');
-                      actionButton.onclick = () => redirectToMessage(userId);
-                    }
-
-                    parentCard.appendChild(actionButton);
-                    profileContainer.appendChild(parentCard);
-                  }
+                      parentCard.appendChild(actionButton);
+                      profileContainer.appendChild(parentCard);
+                    })
+                    .catch((error) => {
+                      console.error('Error checking friend status:', error);
+                    });
                 }
-              });
+              }
             } else {
               profileContainer.innerHTML = '<p>No parents found.</p>';
             }
@@ -159,7 +200,11 @@
       const friendRequestRefSender = db.ref(`friend_requests/${senderId}/${currentUserId}`);
 
       friendRequestRefCurrentUser.update({ status: 'approved' });
-      friendRequestRefSender.update({ status: 'approved' }).then(() => {
+      friendRequestRefSender.set({
+        senderId: senderId,
+        status: 'approved',
+        timestamp: Date.now()
+      }).then(() => {
         buttonElement.textContent = "Send Message";
         buttonElement.classList.remove('btn-warning');
         buttonElement.classList.add('btn-primary');
@@ -180,13 +225,19 @@
       friendRequestRefSender.remove().then(() => {
         alert('Friend request rejected.');
 
-        // Allow retry by resetting the card
+        // Reset the action button
         const actionButton = parentCard.querySelector('.friend-request-btn');
         actionButton.textContent = "Send Friend Request";
-        actionButton.classList.remove('btn-warning', 'btn-primary');
+        actionButton.classList.remove('btn-warning', 'btn-secondary');
         actionButton.classList.add('btn-success');
         actionButton.disabled = false;
         actionButton.onclick = () => sendFriendRequest(senderId, actionButton);
+
+        // Remove the reject button
+        const rejectButton = parentCard.querySelector('.btn-danger');
+        if (rejectButton) {
+          parentCard.removeChild(rejectButton);
+        }
       }).catch((error) => {
         console.error('Error rejecting friend request:', error);
       });
@@ -202,6 +253,7 @@
 </head>
 <body>
 
+
   <!-- Sidebar -->
   <div class="sidebar">
     <a href="dashboard.html">Dashboard</a>
@@ -212,10 +264,11 @@
     <a href="emergency-contact.html">Emergency Contact</a>
     <a href="feedback.html">Feedback</a>
     <a href="connect-parents.html">Connect with Parents</a>
+    <a href="help.html">Help</a>
     <a href="notifications.html">Notifications</a>
     <a href="profile.html">Profile</a>
   </div>
-
+  
   <!-- Main Content -->
   <div class="main-content">
     <h2>Connect with Parents</h2>

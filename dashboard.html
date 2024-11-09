@@ -3,26 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Parenting Navigator Dashboard</title>
+  <title>Parenting Navigator - Dashboard</title>
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  
   <style>
-    .dashboard-container {
-      margin-top: 30px;
-    }
-    .card {
-      margin-bottom: 20px;
-    }
-    .welcome-banner {
-      background-color: #e7f3fe;
-      padding: 20px;
-      border-radius: 5px;
-      text-align: center;
-      margin-bottom: 30px;
-    }
-    .section-title {
-      font-size: 1.2rem;
-      font-weight: bold;
-      margin-bottom: 15px;
+    body {
+      margin: 0;
+      padding: 0;
     }
     .sidebar {
       height: 100vh;
@@ -40,11 +27,257 @@
     .sidebar a:hover {
       background-color: #495057;
     }
-    .main-content {
+    .content-container {
       margin-left: 240px;
       padding: 20px;
     }
+    .events, .upcoming-events {
+      margin-top: 20px;
+    }
+    /* Modal styling */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-content {
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      width: 400px;
+    }
+    .modal.show {
+      display: flex;
+    }
+    .modal-footer {
+      display: flex;
+      justify-content: space-between;
+    }
   </style>
+
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDpwiZNtTumaXAc_H205dh5XRFfXUJ6q-8",
+      authDomain: "parenting-navigator.firebaseapp.com",
+      databaseURL: "https://parenting-navigator-default-rtdb.firebaseio.com",
+      projectId: "parenting-navigator",
+      storageBucket: "parenting-navigator.appspot.com",
+      messagingSenderId: "434358983426",
+      appId: "1:434358983426:web:276cd82ea411a0056c801b",
+      measurementId: "G-3Y2MVG3D93"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const auth = firebase.auth();
+
+    let selectedEvent = null;
+
+    function loadUpcomingEvents(userId) {
+      const upcomingEventsList = document.getElementById('upcoming-events-list');
+      upcomingEventsList.innerHTML = ''; // Clear the list before loading
+
+      const currentDate = new Date();
+      const currentYear = currentDate.getFullYear();
+      const currentMonth = currentDate.getMonth();
+      const currentDay = currentDate.getDate();
+
+      const eventsRef = db.ref('users/' + userId + '/events/');
+      eventsRef.once('value').then((snapshot) => {
+        const events = snapshot.val();
+        if (events) {
+          for (const year in events) {
+            for (const month in events[year]) {
+              for (const day in events[year][month]) {
+                const eventDate = new Date(year, month, day);
+                if (eventDate >= currentDate) {
+                  const event = events[year][month][day];
+                  const listItem = document.createElement('li');
+                  listItem.textContent = `${event.title} - ${year}-${parseInt(month) + 1}-${day}`;
+                  listItem.classList.add('list-group-item');
+                  upcomingEventsList.appendChild(listItem);
+                }
+              }
+            }
+          }
+        } else {
+          const noEventItem = document.createElement('li');
+          noEventItem.textContent = "No upcoming events.";
+          noEventItem.classList.add('list-group-item');
+          upcomingEventsList.appendChild(noEventItem);
+        }
+      });
+    }
+
+    function openManageEventsModal(userId) {
+      loadEvents(userId);
+      document.getElementById('manage-events-modal').classList.add('show');
+    }
+
+    function closeManageEventsModal() {
+      document.getElementById('manage-events-modal').classList.remove('show');
+    }
+
+    function loadEvents(userId) {
+      const eventsList = document.getElementById('events-list');
+      eventsList.innerHTML = ''; // Clear the list before loading
+
+      const eventsRef = db.ref('users/' + userId + '/events/');
+      eventsRef.once('value').then((snapshot) => {
+        const events = snapshot.val();
+        if (events) {
+          for (const year in events) {
+            for (const month in events[year]) {
+              for (const day in events[year][month]) {
+                const event = events[year][month][day];
+                const listItem = document.createElement('li');
+                listItem.classList.add('list-group-item', 'd-flex', 'justify-content-between', 'align-items-center');
+
+                listItem.innerHTML = `
+                  <span>${event.title} - ${year}-${parseInt(month) + 1}-${day}</span>
+                  <div>
+                    <button class="btn btn-warning btn-sm" onclick="openUpdateModal('${userId}', '${year}', '${month}', '${day}', '${event.title}')">Update</button>
+                    <button class="btn btn-danger btn-sm" onclick="openDeleteModal('${userId}', '${year}', '${month}', '${day}')">Delete</button>
+                  </div>
+                `;
+                eventsList.appendChild(listItem);
+              }
+            }
+          }
+        } else {
+          const noEventItem = document.createElement('li');
+          noEventItem.textContent = "No events found.";
+          noEventItem.classList.add('list-group-item');
+          eventsList.appendChild(noEventItem);
+        }
+      });
+    }
+
+    function openUpdateModal(userId, year, month, day, title) {
+      selectedEvent = { userId, year, month, day };
+      document.getElementById('update-event-title').value = title;
+      document.getElementById('update-event-date').value = `${year}-${String(parseInt(month) + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      document.getElementById('update-modal').classList.add('show');
+    }
+
+    function closeUpdateModal() {
+      document.getElementById('update-modal').classList.remove('show');
+    }
+
+    function updateEvent() {
+      const newTitle = document.getElementById('update-event-title').value;
+      const newDate = new Date(document.getElementById('update-event-date').value);
+      const { userId, year, month, day } = selectedEvent;
+
+      if (newTitle.trim() === "") {
+        alert("Event title cannot be empty.");
+        return;
+      }
+
+      const eventRef = db.ref(`users/${userId}/events/${year}/${month}/${day}`);
+      eventRef.remove().then(() => {
+        const newYear = newDate.getFullYear();
+        const newMonth = newDate.getMonth();
+        const newDay = newDate.getDate();
+        const newEventRef = db.ref(`users/${userId}/events/${newYear}/${newMonth}/${newDay}`);
+        newEventRef.set({ title: newTitle }).then(() => {
+          loadEvents(userId);
+          closeUpdateModal();
+        });
+      });
+    }
+
+    function openDeleteModal(userId, year, month, day) {
+      selectedEvent = { userId, year, month, day };
+      document.getElementById('delete-modal').classList.add('show');
+    }
+
+    function closeDeleteModal() {
+      document.getElementById('delete-modal').classList.remove('show');
+    }
+
+    function deleteEvent() {
+      const { userId, year, month, day } = selectedEvent;
+      const eventRef = db.ref(`users/${userId}/events/${year}/${month}/${day}`);
+
+      eventRef.remove().then(() => {
+        loadEvents(userId);
+        closeDeleteModal();
+      });
+    }
+
+    function loadNotifications(userId) {
+      const notificationsList = document.getElementById('notifications-list');
+      notificationsList.innerHTML = ''; // Clear existing notifications
+
+      const friendRequestsRef = db.ref('friend_requests/' + userId);
+      friendRequestsRef.once('value').then((snapshot) => {
+        const requests = snapshot.val();
+        if (requests) {
+          for (const requestId in requests) {
+            const request = requests[requestId];
+            if (request.status === 'pending') {
+              const listItem = document.createElement('li');
+              listItem.innerHTML = `
+                <span>You have a friend request</span>
+                <button class="btn btn-primary btn-sm" onclick="window.location.href='connect-parents.html'">View</button>
+              `;
+              listItem.classList.add('list-group-item', 'd-flex', 'justify-content-between', 'align-items-center');
+              notificationsList.appendChild(listItem);
+            }
+          }
+        }
+      });
+
+      const messagesRef = db.ref('messages/' + userId);
+      messagesRef.once('value').then((snapshot) => {
+        const messages = snapshot.val();
+        if (messages) {
+          const listItem = document.createElement('li');
+          listItem.innerHTML = `
+            <span>You have a new message</span>
+            <button class="btn btn-secondary btn-sm" onclick="closeNotificationModal()">Close</button>
+          `;
+          listItem.classList.add('list-group-item', 'd-flex', 'justify-content-between', 'align-items-center');
+          notificationsList.appendChild(listItem);
+        }
+      });
+    }
+
+    function closeNotificationModal() {
+      document.getElementById('notification-modal').classList.remove('show');
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      auth.onAuthStateChanged((user) => {
+        if (user) {
+          const userId = user.uid;
+          db.ref('users/' + userId).once('value').then((snapshot) => {
+            const userName = snapshot.val().first_name;
+            document.getElementById('welcome-message').textContent = `Welcome to Parenting Navigator, ${userName}!`;
+          });
+          loadUpcomingEvents(userId);
+          loadNotifications(userId);
+
+          // Open the manage events modal when button is clicked
+          document.getElementById('manage-events-btn').addEventListener('click', () => openManageEventsModal(userId));
+        } else {
+          alert("Please log in to view events.");
+          window.location.href = "index.html";
+        }
+      });
+    });
+  </script>
 </head>
 <body>
 
@@ -63,139 +296,67 @@
     <a href="profile.html">Profile</a>
   </div>
 
-  <!-- Main Content -->
-  <div class="main-content">
-    <div class="welcome-banner">
-      <h3>Welcome to the Parenting Support App!</h3>
-      <p>We’re glad to have you here. Start by exploring the features on the sidebar or view your upcoming events and tasks below.</p>
+  <!-- Content Container -->
+  <div class="content-container">
+    <h2 id="welcome-message">Welcome to Parenting Navigator!</h2>
+
+    <h3>Upcoming Events</h3>
+    <ul id="upcoming-events-list" class="list-group">
+      <!-- Upcoming events will be inserted dynamically here -->
+    </ul>
+
+    <button id="manage-events-btn" class="btn btn-primary mt-4">Manage Events</button>
+  </div>
+
+  <!-- Manage Events Modal -->
+  <div id="manage-events-modal" class="modal">
+    <div class="modal-content">
+      <h5>Manage Events</h5>
+      <ul id="events-list" class="list-group">
+        <!-- Events will be inserted dynamically here -->
+      </ul>
+      <button class="btn btn-secondary mt-3" onclick="closeManageEventsModal()">Close</button>
     </div>
+  </div>
 
-    <div class="dashboard-container">
-      <div class="row">
-        <!-- Upcoming Events Section -->
-        <div class="col-md-6">
-          <div class="card">
-            <div class="card-header">
-              <h4>Upcoming Events</h4>
-            </div>
-            <ul class="list-group list-group-flush" id="upcoming-events">
-              <!-- Events will be injected dynamically -->
-            </ul>
-          </div>
-        </div>
+  <!-- Update Event Modal -->
+  <div id="update-modal" class="modal">
+    <div class="modal-content">
+      <h5>Update Event</h5>
+      <input type="text" id="update-event-title" class="form-control" placeholder="Event Title">
+      <br>
+      <input type="date" id="update-event-date" class="form-control">
+      <br>
+      <button class="btn btn-success" onclick="updateEvent()">Update Event</button>
+      <button class="btn btn-secondary" onclick="closeUpdateModal()">Cancel</button>
+    </div>
+  </div>
 
-        <!-- Tasks Section -->
-        <div class="col-md-6">
-          <div class="card">
-            <div class="card-header">
-              <h4>Tasks</h4>
-            </div>
-            <ul class="list-group list-group-flush" id="tasks-list">
-              <!-- Tasks will be injected dynamically -->
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      <div class="row">
-        <!-- Recent Updates Section -->
-        <div class="col-md-12">
-          <div class="card">
-            <div class="card-header">
-              <h4>Recent Updates</h4>
-            </div>
-            <ul class="list-group list-group-flush" id="updates-list">
-              <!-- Recent updates will be injected dynamically -->
-            </ul>
-          </div>
-        </div>
+  <!-- Delete Event Modal -->
+  <div id="delete-modal" class="modal">
+    <div class="modal-content">
+      <h5>Are you sure you want to delete this event?</h5>
+      <div class="modal-footer">
+        <button class="btn btn-danger" onclick="deleteEvent()">Delete</button>
+        <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
       </div>
     </div>
   </div>
 
-  <!-- Firebase SDK and Initialization -->
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js"></script>
+  <!-- Notification Modal -->
+  <div id="notification-modal" class="modal">
+    <div class="modal-content">
+      <h5>Notifications</h5>
+      <ul id="notifications-list" class="list-group">
+        <!-- Notifications will be dynamically inserted here -->
+      </ul>
+      <button class="btn btn-secondary mt-3" onclick="closeNotificationModal()">Close</button>
+    </div>
+  </div>
 
-  <script>
-    // Firebase Configuration
-    const firebaseConfig = {
-      apiKey: "AIzaSyDpwiZNtTumaXAc_H205dh5XRFfXUJ6q-8",
-      authDomain: "parenting-navigator.firebaseapp.com",
-      databaseURL: "https://parenting-navigator-default-rtdb.firebaseio.com",
-      projectId: "parenting-navigator",
-      storageBucket: "parenting-navigator.appspot.com",
-      messagingSenderId: "434358983426",
-      appId: "1:434358983426:web:276cd82ea411a0056c801b",
-      measurementId: "G-3Y2MVG3D93"
-    };
-
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    // Fetch the current user's ID (this is hardcoded for now, you can make it dynamic later)
-    const userId = "Ye98BtBlhDgddgTMrFiAtYxiRck2";  // Replace with dynamic userId in production
-
-    // Reference to user's data
-    const userRef = db.ref('users/' + userId);
-
-    // Function to load data dynamically into dashboard
-    function loadDashboardData() {
-      userRef.once('value').then((snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-          // Populate Upcoming Events
-          const events = data.events || {};
-          const eventsList = document.getElementById('upcoming-events');
-          eventsList.innerHTML = '';  // Clear previous events
-          for (const eventId in events) {
-            const event = events[eventId];
-            const eventItem = document.createElement('li');
-            eventItem.classList.add('list-group-item');
-            eventItem.textContent = `${event.title} - ${event.date}`;
-            eventsList.appendChild(eventItem);
-          }
-
-          // Populate Tasks
-          const tasks = data.tasks || {};
-          const tasksList = document.getElementById('tasks-list');
-          tasksList.innerHTML = '';  // Clear previous tasks
-          for (const taskId in tasks) {
-            const task = tasks[taskId];
-            const taskItem = document.createElement('li');
-            taskItem.classList.add('list-group-item');
-            taskItem.textContent = `${task.title} - ${task.status}`;
-            tasksList.appendChild(taskItem);
-          }
-
-          // Populate Recent Updates
-          const updates = data.updates || {};
-          const updatesList = document.getElementById('updates-list');
-          updatesList.innerHTML = '';  // Clear previous updates
-          if (Object.keys(updates).length > 0) {
-            for (const updateId in updates) {
-              const update = updates[updateId];
-              const updateItem = document.createElement('li');
-              updateItem.classList.add('list-group-item');
-              updateItem.textContent = update.message;
-              updatesList.appendChild(updateItem);
-            }
-          } else {
-            const noUpdateItem = document.createElement('li');
-            noUpdateItem.classList.add('list-group-item');
-            noUpdateItem.textContent = "No recent updates at the moment.";
-            updatesList.appendChild(noUpdateItem);
-          }
-        }
-      }).catch((error) => {
-        console.error("Error loading dashboard data:", error);
-      });
-    }
-
-    // Load the dashboard data once the page loads
-    document.addEventListener("DOMContentLoaded", loadDashboardData);
-  </script>
+  <!-- Bootstrap JS -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
 
 </body>
 </html>

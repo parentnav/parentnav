@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Health Records</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
+  <style>
+    body { margin: 0; padding: 0; }
+    .sidebar { height: 100vh; width: 220px; background-color: #343a40; position: fixed; padding-top: 20px; }
+    .sidebar a { display: block; color: white; padding: 10px 15px; text-decoration: none; }
+    .sidebar a:hover { background-color: #495057; }
+    .content { margin-left: 240px; padding: 20px; }
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); justify-content: center; align-items: center; }
+    .modal.show { display: flex; }
+    .modal-content { background-color: #fff; padding: 20px; border-radius: 8px; width: 500px; }
+    .modal-footer { display: flex; justify-content: flex-end; }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="calendar.html">Calendar</a>
+    <a href="medical-records.html">Medical Records</a>
+    <a href="development-tips.html">Development Tips</a>
+    <a href="health-tracking.html">Health Tracking</a>
+    <a href="emergency-contact.html">Emergency Contact</a>
+    <a href="feedback.html">Feedback</a>
+    <a href="connect-parents.html">Connect with Parents</a>
+    <a href="help.html">Help</a>
+    <a href="notifications.html">Notifications</a>
+    <a href="profile.html">Profile</a>
+  </div>
+
+  <!-- Main Content -->
+  <div class="content">
+    <h2>Health Records</h2>
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Child's Name</th>
+          <th>Age</th>
+          <th>Sleep Schedule</th>
+          <th>Feeding</th>
+          <th>Diet</th>
+          <th>Other Notes</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="health-records-table">
+        <!-- Health records will be dynamically loaded here -->
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Update Modal -->
+  <div id="update-modal" class="modal">
+    <div class="modal-content">
+      <h5>Update Health Record</h5>
+      <div class="form-group">
+        <label for="update-childName">Child's Name</label>
+        <input type="text" id="update-childName" class="form-control">
+      </div>
+      <div class="form-group">
+        <label for="update-childAge">Age</label>
+        <input type="number" id="update-childAge" class="form-control">
+      </div>
+      <div class="form-group">
+        <label for="update-sleepSchedule">Sleep Schedule</label>
+        <input type="text" id="update-sleepSchedule" class="form-control">
+      </div>
+      <div class="form-group">
+        <label for="update-feeding">Feeding</label>
+        <textarea id="update-feeding" class="form-control" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="update-diet">Diet</label>
+        <textarea id="update-diet" class="form-control" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="update-otherNotes">Other Notes</label>
+        <textarea id="update-otherNotes" class="form-control" rows="3"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="saveUpdatedRecord()">Save Changes</button>
+        <button class="btn btn-secondary" onclick="closeUpdateModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase and JavaScript Logic -->
+  <script type="module">
+    // Firebase Modular SDKs
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+    import { getDatabase, ref, get, update, remove } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyDpwiZNtTumaXAc_H205dh5XRFfXUJ6q-8",
+      authDomain: "parenting-navigator.firebaseapp.com",
+      databaseURL: "https://parenting-navigator-default-rtdb.firebaseio.com",
+      projectId: "parenting-navigator",
+      storageBucket: "parenting-navigator.appspot.com",
+      messagingSenderId: "434358983426",
+      appId: "1:434358983426:web:276cd82ea411a0056c801b",
+      measurementId: "G-3Y2MVG3D93"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+
+    let selectedRecordId = null;
+
+    // Check authentication and load records
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        console.log("User is logged in. UID:", user.uid);
+        loadHealthRecords(user.uid);
+      } else {
+        alert("Please log in to view health records.");
+        window.location.href = "index.html"; 
+      }
+    });
+
+    // Load health records and display in table
+    window.loadHealthRecords = function(userId) {
+      const healthRecordsTable = document.getElementById('health-records-table');
+      const healthDataRef = ref(db, 'users/' + userId + '/healthTracking');
+
+      get(healthDataRef).then((snapshot) => {
+        if (snapshot.exists()) {
+          const records = snapshot.val();
+          healthRecordsTable.innerHTML = ''; // Clear table
+
+          for (const key in records) {
+            const data = records[key];
+            const row = `<tr>
+              <td>${data.date}</td>
+              <td>${data.childName}</td>
+              <td>${data.childAge}</td>
+              <td>${data.sleepSchedule}</td>
+              <td>${data.feeding}</td>
+              <td>${data.diet}</td>
+              <td>${data.otherNotes}</td>
+              <td>
+                <button class="btn btn-warning btn-sm" onclick="openUpdateModal('${userId}', '${key}')">Update</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteRecord('${userId}', '${key}')">Delete</button>
+              </td>
+            </tr>`;
+            healthRecordsTable.insertAdjacentHTML('beforeend', row);
+          }
+        } else {
+          healthRecordsTable.innerHTML = '<tr><td colspan="8" class="text-center">No records found.</td></tr>';
+        }
+      }).catch((error) => {
+        console.error("Error loading health records:", error);
+      });
+    };
+
+    // Open modal with record data for updating
+    window.openUpdateModal = function(userId, recordId) {
+      const healthDataRef = ref(db, 'users/' + userId + '/healthTracking/' + recordId);
+      get(healthDataRef).then((snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          selectedRecordId = recordId;
+          document.getElementById('update-childName').value = data.childName || '';
+          document.getElementById('update-childAge').value = data.childAge || '';
+          document.getElementById('update-sleepSchedule').value = data.sleepSchedule || '';
+          document.getElementById('update-feeding').value = data.feeding || '';
+          document.getElementById('update-diet').value = data.diet || '';
+          document.getElementById('update-otherNotes').value = data.otherNotes || '';
+          document.getElementById('update-modal').classList.add('show');
+        } else {
+          console.error("No data found for this record.");
+        }
+      }).catch((error) => {
+        console.error("Error fetching record data:", error);
+      });
+    };
+
+    // Close the update modal
+    window.closeUpdateModal = function() {
+      document.getElementById('update-modal').classList.remove('show');
+    };
+
+    // Save updated record to Firebase
+    window.saveUpdatedRecord = function() {
+      const updatedData = {
+        childName: document.getElementById('update-childName').value,
+        childAge: document.getElementById('update-childAge').value,
+        sleepSchedule: document.getElementById('update-sleepSchedule').value,
+        feeding: document.getElementById('update-feeding').value,
+        diet: document.getElementById('update-diet').value,
+        otherNotes: document.getElementById('update-otherNotes').value,
+        date: new Date().toLocaleString()
+      };
+
+      const recordRef = ref(db, 'users/' + auth.currentUser.uid + '/healthTracking/' + selectedRecordId);
+      update(recordRef, updatedData).then(() => {
+        alert("Record updated successfully!");
+        closeUpdateModal();
+        loadHealthRecords(auth.currentUser.uid);
+      }).catch((error) => {
+        console.error("Error updating record:", error);
+      });
+    };
+
+    // Delete a record from Firebase
+    window.deleteRecord = function(userId, recordId) {
+      const recordRef = ref(db, 'users/' + userId + '/healthTracking/' + recordId);
+
+      remove(recordRef).then(() => {
+        alert("Record deleted successfully!");
+        loadHealthRecords(userId);
+      }).catch((error) => {
+        console.error("Error deleting record:", error);
+      });
+    };
+  </script>
+
+  <!-- Bootstrap JS -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

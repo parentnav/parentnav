@@ -35,12 +35,10 @@
 
   <!-- Firebase Modular CDN -->
   <script type="module">
-    // Import Firebase functions you need from the SDKs
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-    import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
-    // Firebase configuration
     const firebaseConfig = {
       apiKey: "AIzaSyDpwiZNtTumaXAc_H205dh5XRFfXUJ6q-8",
       authDomain: "parenting-navigator.firebaseapp.com",
@@ -51,24 +49,21 @@
       appId: "1:434358983426:web:276cd82ea411a0056c801b",
       measurementId: "G-3Y2MVG3D93"
     };
+  
 
-    // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app); 
     const db = getDatabase(app); 
 
-    // Check if the user is authenticated and load health data if logged in
     onAuthStateChanged(auth, (user) => {
       if (user) {
-        const userId = user.uid;
-        loadHealthData(userId);
+        // User is logged in
       } else {
         alert("Please log in to view health tracking data.");
         window.location.href = "index.html"; 
       }
     });
 
-    // Attach functions to the window object to make them globally accessible
     window.saveHealthData = function() {
       const childName = document.getElementById('childName').value;
       const childAge = document.getElementById('childAge').value;
@@ -82,14 +77,14 @@
         const userId = user.uid;
         const healthDataRef = ref(db, 'users/' + userId + '/healthTracking/' + Date.now());
 
-        // Save the health data to Firebase
         set(healthDataRef, {
           childName: childName,
           childAge: childAge,
           sleepSchedule: sleepSchedule,
           feeding: feeding,
           diet: diet,
-          otherNotes: otherNotes
+          otherNotes: otherNotes,
+          date: new Date().toLocaleString()
         }).then(() => {
           alert("Child health data saved successfully!");
         }).catch((error) => {
@@ -98,29 +93,6 @@
       } else {
         alert("You need to be logged in to save health data.");
       }
-    }
-
-    // Function to load health tracking data from Firebase
-    window.loadHealthData = function(userId) {
-      const healthDataRef = ref(db, 'users/' + userId + '/healthTracking');
-
-      get(healthDataRef).then((snapshot) => {
-        if (snapshot.exists()) {
-          const healthData = snapshot.val();
-          for (const key in healthData) {
-            const data = healthData[key];
-            document.getElementById('childName').value = data.childName;
-            document.getElementById('childAge').value = data.childAge;
-            document.getElementById('sleepSchedule').value = data.sleepSchedule;
-            document.getElementById('feeding').value = data.feeding;
-            document.getElementById('diet').value = data.diet;
-            document.getElementById('otherNotes').value = data.otherNotes;
-            break; // Display only the most recent data
-          }
-        }
-      }).catch((error) => {
-        console.error("Error loading health data:", error);
-      });
     }
   </script>
 </head>
@@ -172,6 +144,7 @@
       </div>
 
       <button type="button" class="btn btn-primary" onclick="saveHealthData()">Save Health Data</button>
+      <a href="healthrecords.html" class="btn btn-secondary">View Health Records</a>
     </form>
   </div>
 

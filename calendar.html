@@ -52,6 +52,9 @@
       font-weight: bold;
       color: #007bff;
     }
+    .upcoming-events {
+      margin-top: 20px;
+    }
     /* Modal styling */
     .modal {
       display: none;
@@ -75,13 +78,11 @@
     }
   </style>
 
-  <!-- Firebase CDN (Global Firebase Object) -->
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 
   <script>
-    // Firebase Configuration
     const firebaseConfig = {
       apiKey: "AIzaSyDpwiZNtTumaXAc_H205dh5XRFfXUJ6q-8",
       authDomain: "parenting-navigator.firebaseapp.com",
@@ -93,7 +94,6 @@
       measurementId: "G-3Y2MVG3D93"
     };
 
-    // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     const auth = firebase.auth();
@@ -103,21 +103,16 @@
       "July", "August", "September", "October", "November", "December"
     ];
 
-    let selectedDate = null; // To store the selected date for event creation
+    let selectedDate = null;
 
-    // Helper function to get the number of days in a given month
     function daysInMonth(month, year) {
       return new Date(year, month + 1, 0).getDate();
     }
 
-    // Populate the year dropdown with a range of years
     function populateYearDropdown() {
       const currentYear = new Date().getFullYear();
       const yearSelect = document.getElementById('year-select');
-      
-      // Ensure the year dropdown is cleared before populating
       yearSelect.innerHTML = '';
-      
       for (let year = currentYear - 10; year <= currentYear + 10; year++) {
         const option = document.createElement('option');
         option.value = year;
@@ -129,49 +124,41 @@
       }
     }
 
-    // Function to load a specific month and year into the calendar
     function loadMonth(monthIndex) {
       const year = document.getElementById('year-select').value;
       const daysCount = daysInMonth(monthIndex, year);
       const monthName = monthNames[monthIndex];
 
-      // Update the current month title
       document.getElementById('current-month').textContent = `${monthName} ${year}`;
-
-      // Clear previous calendar grid content
       const calendarGrid = document.getElementById('calendar-grid');
-      calendarGrid.innerHTML = ''; // Reset grid
+      calendarGrid.innerHTML = '';
 
-      // Populate calendar grid with days for the selected month
       for (let i = 1; i <= daysCount; i++) {
         const dayDiv = document.createElement('div');
         dayDiv.textContent = i;
         dayDiv.id = `day-${i}`;
-        dayDiv.onclick = () => openEventModal(monthIndex, year, i); // Open modal when a day is clicked
+        dayDiv.onclick = () => openEventModal(monthIndex, year, i);
         calendarGrid.appendChild(dayDiv);
       }
 
-      // Get logged-in user events from Firebase
       auth.onAuthStateChanged((user) => {
         if (user) {
           const userId = user.uid;
-
-          // Fetch events for the selected month and year from Firebase
           const eventsRef = db.ref('users/' + userId + '/events/' + year + '/' + monthIndex);
           eventsRef.once('value').then((snapshot) => {
             const events = snapshot.val();
             if (events) {
-              // Populate calendar with events
               for (const day in events) {
                 const eventDay = document.getElementById(`day-${day}`);
                 const eventData = events[day];
                 const eventSpan = document.createElement('span');
                 eventSpan.classList.add('event');
                 eventSpan.textContent = eventData.title;
-                eventDay.appendChild(document.createElement('br')); // Line break
+                eventDay.appendChild(document.createElement('br'));
                 eventDay.appendChild(eventSpan);
               }
             }
+            loadUpcomingEvents(userId);
           });
         } else {
           alert("Please log in to view events.");
@@ -180,18 +167,15 @@
       });
     }
 
-    // Function to open the event creation modal
     function openEventModal(monthIndex, year, day) {
       selectedDate = { monthIndex, year, day };
       document.getElementById('event-modal').classList.add('show');
     }
 
-    // Function to close the event modal
     function closeEventModal() {
       document.getElementById('event-modal').classList.remove('show');
     }
 
-    // Function to add an event
     function addEvent() {
       const eventTitle = document.getElementById('event-title').value;
       if (!eventTitle) {
@@ -204,13 +188,10 @@
       auth.onAuthStateChanged((user) => {
         if (user) {
           const userId = user.uid;
-
-          // Save event to Firebase
           const eventRef = db.ref(`users/${userId}/events/${year}/${monthIndex}/${day}`);
           eventRef.set({
             title: eventTitle
           }).then(() => {
-            // After saving, reload the month and close the modal
             loadMonth(monthIndex);
             closeEventModal();
           });
@@ -218,18 +199,52 @@
       });
     }
 
-    // Add event listeners for month buttons
     function addMonthButtonListeners() {
       document.querySelectorAll('.month-buttons button').forEach((button, index) => {
         button.addEventListener('click', () => loadMonth(index));
       });
     }
 
-    // Load the default month (e.g., September) and populate year dropdown on page load
+    function loadUpcomingEvents(userId) {
+      const upcomingEventsList = document.getElementById('upcoming-events-list');
+      upcomingEventsList.innerHTML = ''; // Clear the list before loading
+
+      const currentDate = new Date();
+      const currentYear = currentDate.getFullYear();
+      const currentMonth = currentDate.getMonth();
+      const currentDay = currentDate.getDate();
+
+      const eventsRef = db.ref('users/' + userId + '/events/');
+      eventsRef.once('value').then((snapshot) => {
+        const events = snapshot.val();
+        if (events) {
+          for (const year in events) {
+            for (const month in events[year]) {
+              for (const day in events[year][month]) {
+                const eventDate = new Date(year, month, day);
+                if (eventDate >= currentDate) {
+                  const event = events[year][month][day];
+                  const listItem = document.createElement('li');
+                  listItem.textContent = `${event.title} - ${year}-${parseInt(month) + 1}-${day}`;
+                  listItem.classList.add('list-group-item');
+                  upcomingEventsList.appendChild(listItem);
+                }
+              }
+            }
+          }
+        } else {
+          const noEventItem = document.createElement('li');
+          noEventItem.textContent = "No upcoming events.";
+          noEventItem.classList.add('list-group-item');
+          upcomingEventsList.appendChild(noEventItem);
+        }
+      });
+    }
+
     document.addEventListener("DOMContentLoaded", function () {
       populateYearDropdown();
       addMonthButtonListeners();
-      loadMonth(8);  // September as default
+      loadMonth(new Date().getMonth());
     });
   </script>
 </head>
@@ -254,7 +269,6 @@
   <div class="calendar-container">
     <h2>Select a Year</h2>
     <select id="year-select" class="form-control" style="width: 200px; display: inline-block;">
-      <!-- Year options will be populated dynamically -->
     </select>
 
     <h2 class="mt-3">Select a Month</h2>
@@ -275,7 +289,14 @@
 
     <h3 class="mt-4" id="current-month">September 2024</h3>
     <div id="calendar-grid" class="calendar-grid">
-      <!-- Calendar days will be inserted dynamically here -->
+    </div>
+
+    <!-- Upcoming Events Section -->
+    <div class="upcoming-events">
+      <h4>Upcoming Events</h4>
+      <ul id="upcoming-events-list" class="list-group">
+        <!-- Upcoming events will be inserted dynamically here -->
+      </ul>
     </div>
   </div>
 

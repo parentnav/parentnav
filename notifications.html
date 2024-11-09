@@ -5,12 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Notifications</title>
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-
   <style>
-    body {
-      margin: 0;
-      padding: 0;
-    }
     .sidebar {
       height: 100vh;
       width: 220px;
@@ -27,104 +22,28 @@
     .sidebar a:hover {
       background-color: #495057;
     }
-    .content {
+    .main-content {
       margin-left: 240px;
       padding: 20px;
     }
-    .notification-box {
+    .notification-card {
       background-color: #f8f9fa;
       padding: 15px;
-      border: 1px solid #ddd;
-      border-radius: 5px;
       margin-bottom: 15px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      border-radius: 10px;
+      box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.1);
+      position: relative;
     }
-    .mark-read {
-      color: #007bff;
+    .close-icon {
+      position: absolute;
+      top: 10px;
+      right: 10px;
       cursor: pointer;
     }
+    .clear-all-btn {
+      margin-bottom: 15px;
+    }
   </style>
-
-  <!-- Firebase App (Global Object) -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-
-  <script>
-    // Firebase Configuration
-    const firebaseConfig = {
-      apiKey: "AIzaSyDpwiZNtTumaXAc_H205dh5XRFfXUJ6q-8",
-      authDomain: "parenting-navigator.firebaseapp.com",
-      databaseURL: "https://parenting-navigator-default-rtdb.firebaseio.com",
-      projectId: "parenting-navigator",
-      storageBucket: "parenting-navigator.appspot.com",
-      messagingSenderId: "434358983426",
-      appId: "1:434358983426:web:276cd82ea411a0056c801b",
-      measurementId: "G-3Y2MVG3D93"
-    };
-
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const auth = firebase.auth();
-
-    // Load notifications on page load
-    document.addEventListener("DOMContentLoaded", function() {
-      auth.onAuthStateChanged((user) => {
-        if (user) {
-          const userId = user.uid;
-          loadNotifications(userId);
-        } else {
-          alert("Please log in to view notifications.");
-          window.location.href = "index.html"; // Redirect to login if not authenticated
-        }
-      });
-    });
-
-    // Function to load notifications from Firebase
-    function loadNotifications(userId) {
-      const notificationsRef = db.ref('users/' + userId + '/notifications');
-      notificationsRef.once('value').then((snapshot) => {
-        const notifications = snapshot.val();
-        if (notifications) {
-          const notificationContainer = document.getElementById('notification-container');
-          notificationContainer.innerHTML = ''; // Clear existing content
-
-          for (const notificationKey in notifications) {
-            const notification = notifications[notificationKey];
-            const notificationElement = document.createElement('div');
-            notificationElement.classList.add('notification-box');
-            notificationElement.innerHTML = `
-              <div>
-                <strong>${notification.title}</strong> - ${notification.message}
-              </div>
-              <div>
-                <span class="mark-read" onclick="markAsRead('${userId}', '${notificationKey}')">Mark as Read</span>
-              </div>
-            `;
-            notificationContainer.appendChild(notificationElement);
-          }
-        } else {
-          document.getElementById('notification-container').innerHTML = '<p>No notifications found.</p>';
-        }
-      }).catch((error) => {
-        console.error("Error loading notifications:", error);
-      });
-    }
-
-    // Function to mark a notification as read
-    function markAsRead(userId, notificationKey) {
-      const notificationRef = db.ref('users/' + userId + '/notifications/' + notificationKey);
-      notificationRef.remove().then(() => {
-        alert("Notification marked as read!");
-        loadNotifications(userId); // Reload notifications after marking as read
-      }).catch((error) => {
-        console.error("Error marking notification as read:", error);
-      });
-    }
-  </script>
 </head>
 <body>
 
@@ -138,23 +57,103 @@
     <a href="emergency-contact.html">Emergency Contact</a>
     <a href="feedback.html">Feedback</a>
     <a href="connect-parents.html">Connect with Parents</a>
-    <a href="help.html">Help</a>
     <a href="notifications.html">Notifications</a>
     <a href="profile.html">Profile</a>
   </div>
 
   <!-- Main Content -->
-  <div class="content">
+  <div class="main-content">
     <h2>Notifications</h2>
-
-    <div id="notification-container">
-      <!-- Notifications will be loaded here dynamically -->
+    <button class="btn btn-danger clear-all-btn" onclick="clearAllNotifications()">Clear All Notifications</button>
+    <div id="notifications">
+      <!-- Notifications will be dynamically added here -->
     </div>
   </div>
 
-  <!-- Bootstrap JS -->
-  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 
+<script>
+  // Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyDpwiZNtTumaXAc_H205dh5XRFfXUJ6q-8",
+    authDomain: "parenting-navigator.firebaseapp.com",
+    databaseURL: "https://parenting-navigator-default-rtdb.firebaseio.com",
+    projectId: "parenting-navigator",
+    storageBucket: "parenting-navigator.appspot.com",
+    messagingSenderId: "434358983426",
+    appId: "1:434358983426:web:276cd82ea411a0056c801b",
+    measurementId: "G-3Y2MVG3D93"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  const auth = firebase.auth();
+  const notificationsContainer = document.getElementById('notifications');
+
+  auth.onAuthStateChanged((user) => {
+    if (user) {
+      const currentUserId = user.uid;
+      const messagesRef = db.ref('messages/' + currentUserId);
+
+      // Listen for new messages for notifications
+      messagesRef.on('child_added', (snapshot) => handleNewMessage(snapshot, currentUserId));
+      messagesRef.on('child_changed', (snapshot) => handleNewMessage(snapshot, currentUserId));
+    } else {
+      alert("Please log in to view notifications.");
+      window.location.href = 'index.html';
+    }
+  });
+
+  function handleNewMessage(snapshot, currentUserId) {
+    const senderId = snapshot.key;
+    const messages = snapshot.val();
+
+    // Process each message in the thread
+    for (const messageId in messages) {
+      const messageData = messages[messageId];
+
+      // Only notify if the message has not been notified before
+      if (!messageData.notified && messageData.senderId !== currentUserId) {
+        // Fetch sender's name
+        db.ref('users/' + senderId).once('value').then(userSnapshot => {
+          const senderData = userSnapshot.val();
+          const senderName = senderData && senderData.first_name ? senderData.first_name : "Unknown User";
+
+          // Display the notification
+          addNotification(`You have a new message from ${senderName}`);
+
+          // Mark the message as notified
+          db.ref(`messages/${currentUserId}/${senderId}/${messageId}`).update({ notified: true });
+        }).catch(error => {
+          console.error("Error fetching sender data:", error);
+          addNotification("You have a new message from Unknown User");
+        });
+      }
+    }
+  }
+
+  function addNotification(message) {
+    // Create notification card
+    const notificationCard = document.createElement('div');
+    notificationCard.classList.add('notification-card');
+    notificationCard.innerHTML = `
+      <p><strong>${message}</strong></p>
+      <span class="close-icon" onclick="removeNotification(this)">×</span>
+    `;
+    notificationsContainer.appendChild(notificationCard);
+  }
+
+  function removeNotification(element) {
+    // Remove the specific notification
+    element.parentElement.remove();
+  }
+
+  function clearAllNotifications() {
+    // Remove all notifications
+    notificationsContainer.innerHTML = '';
+  }
+</script>
 </body>
 </html>

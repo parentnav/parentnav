@@ -62,7 +62,7 @@ export function loginUser(email, password) {
       const user = userCredential.user;
       console.log("User logged in:", user);
       alert("Login successful!");
-      window.location.href = "dashboard.html";  // Redirect to dashboard after successful login
+      window.location.href = "loader.html";  // Redirect to dashboard after successful login
     })
     .catch((error) => {
       console.error("Error logging in:", error.message);

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Messages</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <style>
+    .sidebar {
+      height: 100vh;
+      width: 220px;
+      background-color: #343a40;
+      position: fixed;
+      padding-top: 20px;
+    }
+    .sidebar a {
+      display: block;
+      color: white;
+      padding: 10px 15px;
+      text-decoration: none;
+    }
+    .sidebar a:hover {
+      background-color: #495057;
+    }
+    .main-content {
+      margin-left: 240px;
+      padding: 20px;
+    }
+    .message-box {
+      height: 500px;
+      overflow-y: scroll;
+      border: 1px solid #ccc;
+      padding: 10px;
+      background-color: #f9f9f9;
+    }
+    .message-input {
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="calendar.html">Calendar</a>
+    <a href="medical-records.html">Medical Records</a>
+    <a href="development-tips.html">Development Tips</a>
+    <a href="health-tracking.html">Health Tracking</a>
+    <a href="emergency-contact.html">Emergency Contact</a>
+    <a href="feedback.html">Feedback</a>
+    <a href="connect-parents.html">Connect with Parents</a>
+    <a href="notifications.html">Notifications</a>
+    <a href="profile.html">Profile</a>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <h2>Chat</h2>
+    <div class="message-box" id="messageBox"></div>
+    <div class="message-input">
+      <input type="text" id="messageInput" class="form-control" placeholder="Type a message...">
+      <button class="btn btn-primary mt-2" onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+
+<script>
+  // Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyDpwiZNtTumaXAc_H205dh5XRFfXUJ6q-8",
+    authDomain: "parenting-navigator.firebaseapp.com",
+    databaseURL: "https://parenting-navigator-default-rtdb.firebaseio.com",
+    projectId: "parenting-navigator",
+    storageBucket: "parenting-navigator.appspot.com",
+    messagingSenderId: "434358983426",
+    appId: "1:434358983426:web:276cd82ea411a0056c801b",
+    measurementId: "G-3Y2MVG3D93"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  const auth = firebase.auth();
+  const otherUserId = sessionStorage.getItem('messageUserId');
+
+  auth.onAuthStateChanged((user) => {
+    if (user) {
+      const currentUserId = user.uid;
+      const chatRef = db.ref('messages/' + currentUserId + '/' + otherUserId);
+
+      // Fetch other user's name
+      db.ref('users/' + otherUserId).once('value').then(snapshot => {
+        const otherUserName = snapshot.val().first_name + ' ' + snapshot.val().last_name;
+
+        chatRef.on('child_added', (snapshot) => {
+          const messageData = snapshot.val();
+          displayMessage(messageData, messageData.senderId === currentUserId, otherUserName);
+        });
+      });
+    }
+  });
+
+  function sendMessage() {
+    const messageInput = document.getElementById('messageInput');
+    const message = messageInput.value.trim();
+
+    if (message) {
+      const currentUserId = auth.currentUser.uid;
+      const messageRef = db.ref('messages/' + currentUserId + '/' + otherUserId);
+      const otherMessageRef = db.ref('messages/' + otherUserId + '/' + currentUserId);
+
+      const messageData = {
+        senderId: currentUserId,
+        text: message,
+        timestamp: Date.now()
+      };
+
+      messageRef.push(messageData);
+      otherMessageRef.push(messageData);
+      messageInput.value = '';
+    }
+  }
+
+  function displayMessage(messageData, isSender, otherUserName) {
+    const messageBox = document.getElementById('messageBox');
+    const messageDiv = document.createElement('div');
+    
+    const userLabel = document.createElement('strong');
+    userLabel.textContent = isSender ? 'You' : otherUserName;
+    messageDiv.appendChild(userLabel);
+
+    const messageText = document.createElement('p');
+    messageText.textContent = messageData.text;
+    messageDiv.appendChild(messageText);
+
+    // Add each class separately to avoid InvalidCharacterError
+    messageDiv.classList.add('p-2', 'rounded', 'mb-2');
+    if (isSender) {
+      messageDiv.classList.add('bg-primary', 'text-white');
+      messageDiv.style.alignSelf = 'flex-end';
+    } else {
+      messageDiv.classList.add('bg-light', 'text-dark');
+      messageDiv.style.alignSelf = 'flex-start';
+    }
+
+    messageBox.appendChild(messageDiv);
+    messageBox.scrollTop = messageBox.scrollHeight;
+  }
+</script>
+</body>
+</html>

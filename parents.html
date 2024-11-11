@@ -88,8 +88,8 @@
               parentCard.innerHTML = `
                 <h5>${parent.first_name} ${parent.last_name}</h5>
                 <p>Email: ${parent.email}</p>
-             <button class="btn btn-success" style="background-color: #191b1c; color: #ffffff;" onclick="sendFriendRequest('${parentId}')" id="send-request-btn-${parentId}">Send Friend Request</button>
-<button class="btn btn-primary" style="display:none;" id="message-btn-${parentId}" onclick="startChat('${parentId}', '${parent.first_name}')">Message</button>
+             <button style="background-color: #191b1c; color: #ffffff;" onclick="sendFriendRequest('${parentId}')" id="send-request-btn-${parentId}">Send Friend Request</button>
+<button  style="display:none;" id="message-btn-${parentId}" onclick="startChat('${parentId}', '${parent.first_name}')">Message</button>
 
               `;
               profileContainer.appendChild(parentCard);

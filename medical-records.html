@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -184,19 +184,22 @@
   </div>
 
   <!-- Main Content -->
-  <div class="content">
-    <h2>Medical Records</h2>
+<div class="mb-4">
+  <h2>Medical Records</h2>
 
-    <div class="mb-4">
-      <h5>Upload Medical Records</h5>
-      <input type="file" id="file-input" class="form-control mb-2">
-      <button class="btn btn-primary" onclick="uploadFile()">Upload</button>
-    </div>
+  <div>
+    <h3>Upload Medical Records</h3>
+    <label for="file-input">Choose a medical record file to upload:</label>
+    <input type="file" id="file-input" class="form-control mb-2" title="Choose a medical record file to upload">
+    <button class="btn btn-primary" onclick="uploadFile()" style="background-color: #990000;">Upload</button>
+  </div>
+</div>
 
-    <div class="record-list">
-      <h5>Existing Records</h5>
-      <div id="record-list"></div>
-    </div>
+<div class="record-list">
+  <h3>Existing Records</h3>
+  <div id="record-list"></div>
+</div>
+
   </div>
 
   <!-- Bootstrap JS -->

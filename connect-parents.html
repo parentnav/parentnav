@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
   <meta charset="UTF-8">
   <title>Connect with Parents</title>
@@ -40,7 +40,6 @@
     .btn-space {
       margin-top: 10px;
     }
-    /* Styling friend request buttons with #191b1c */
     .btn-success, .friend-request-btn {
       background-color: #191b1c;
       color: white;
@@ -72,7 +71,6 @@
     const db = firebase.database();
     const auth = firebase.auth();
 
-    // Function to check friend status between current user and another user
     function checkFriendStatus(currentUserId, otherUserId) {
       return new Promise((resolve, reject) => {
         const incomingRequestRef = db.ref(`friend_requests/${currentUserId}/${otherUserId}`);
@@ -133,34 +131,35 @@
                       actionButton.classList.add('btn', 'friend-request-btn');
 
                       if (!friendStatus) {
-                        // No friend request exists
                         actionButton.textContent = "Send Friend Request";
                         actionButton.classList.add('btn-success');
+                        actionButton.setAttribute('aria-label', 'Send Friend Request');
                         actionButton.onclick = () => {
                           sendFriendRequest(userId, actionButton);
                         };
                       } else if (friendStatus === "pending") {
                         if (direction === 'incoming') {
-                          // Friend request received from other user
                           actionButton.textContent = "Approve";
                           actionButton.classList.add('btn-warning');
+                          actionButton.setAttribute('aria-label', 'Approve Friend Request');
                           actionButton.onclick = () => approveFriendRequest(userId, actionButton);
 
                           const rejectButton = document.createElement('button');
                           rejectButton.textContent = "Reject";
                           rejectButton.classList.add('btn', 'btn-danger', 'ml-2', 'btn-space');
+                          rejectButton.setAttribute('aria-label', 'Reject Friend Request');
                           rejectButton.onclick = () => rejectFriendRequest(userId, parentCard);
                           parentCard.appendChild(rejectButton);
                         } else if (direction === 'outgoing') {
-                          // Friend request sent to other user
                           actionButton.textContent = "Waiting for Response";
                           actionButton.classList.add('btn-secondary');
+                          actionButton.setAttribute('aria-label', 'Friend Request Sent, Waiting for Response');
                           actionButton.disabled = true;
                         }
                       } else if (friendStatus === "approved") {
-                        // Friendship approved
                         actionButton.textContent = "Send Message";
                         actionButton.classList.add('btn-primary');
+                        actionButton.setAttribute('aria-label', 'Send Message to Parent');
                         actionButton.onclick = () => redirectToMessage(userId);
                       }
 
@@ -234,7 +233,6 @@
       friendRequestRefSender.remove().then(() => {
         alert('Friend request rejected.');
 
-        // Reset the action button
         const actionButton = parentCard.querySelector('.friend-request-btn');
         actionButton.textContent = "Send Friend Request";
         actionButton.classList.remove('btn-warning', 'btn-secondary');
@@ -242,7 +240,6 @@
         actionButton.disabled = false;
         actionButton.onclick = () => sendFriendRequest(senderId, actionButton);
 
-        // Remove the reject button
         const rejectButton = parentCard.querySelector('.btn-danger');
         if (rejectButton) {
           parentCard.removeChild(rejectButton);
@@ -291,4 +288,3 @@
 
 </body>
 </html>
-

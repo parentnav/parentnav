@@ -13,7 +13,7 @@
     .sidebar {
       height: 100vh;
       width: 220px;
-      background-color: #191b1c;
+      background-color: #343a40;
       position: fixed;
       padding-top: 20px;
     }
@@ -184,23 +184,21 @@
   </div>
 
   <!-- Main Content -->
-<div class="mb-4">
-  <h2>Medical Records</h2>
+  <div class="content">
+    <h3>Medical Records</h3>
 
-  <div>
-    <h3>Upload Medical Records</h3>
-    <label for="file-input">Choose a medical record file to upload:</label>
-    <input type="file" id="file-input" class="form-control mb-2" title="Choose a medical record file to upload">
-    <button class="btn btn-primary" onclick="uploadFile()" style="background-color: #990000;">Upload</button>
+    <div class="mb-4">
+      <h4>Upload Medical Records</h4>
+      <label for="file-input">Choose a medical record file to upload:</label>
+      <input type="file" id="file-input" class="form-control mb-2">
+      <button class="btn btn-primary" onclick="uploadFile()">Upload</button>
+    </div>
+
+    <div class="record-list">
+      <h5>Existing Records</h5>
+      <div id="record-list"></div>
+    </div>
   </div>
-</div>
-
-<div class="record-list">
-  <h3>Existing Records</h3>
-  <div id="record-list"></div>
-</div>
-
-
 
   <!-- Bootstrap JS -->
   <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>

@@ -1,5 +1,159 @@
 <!DOCTYPE html>
-<html lang="en">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Child Health Tracking</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+    }
+    .sidebar {
+      height: 100vh;
+      width: 220px;
+      background-color: #191b1c;
+      position: fixed;
+      padding-top: 20px;
+    }
+    .sidebar a {
+      display: block;
+      color: white;
+      padding: 10px 15px;
+      text-decoration: none;
+    }
+    .sidebar a:hover {
+      background-color: #495057;
+    }
+    .content {
+      margin-left: 240px;
+      padding: 20px;
+    }
+  </style>
+
+  <!-- Firebase Modular CDN -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDpwiZNtTumaXAc_H205dh5XRFfXUJ6q-8",
+      authDomain: "parenting-navigator.firebaseapp.com",
+      databaseURL: "https://parenting-navigator-default-rtdb.firebaseio.com",
+      projectId: "parenting-navigator",
+      storageBucket: "parenting-navigator.appspot.com",
+      messagingSenderId: "434358983426",
+      appId: "1:434358983426:web:276cd82ea411a0056c801b",
+      measurementId: "G-3Y2MVG3D93"
+    };
+  
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app); 
+    const db = getDatabase(app); 
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        // User is logged in
+      } else {
+        alert("Please log in to view health tracking data.");
+        window.location.href = "index.html"; 
+      }
+    });
+
+    window.saveHealthData = function() {
+      const childName = document.getElementById('childName').value;
+      const childAge = document.getElementById('childAge').value;
+      const sleepSchedule = document.getElementById('sleepSchedule').value;
+      const feeding = document.getElementById('feeding').value;
+      const diet = document.getElementById('diet').value;
+      const otherNotes = document.getElementById('otherNotes').value;
+
+      const user = auth.currentUser;
+      if (user) {
+        const userId = user.uid;
+        const healthDataRef = ref(db, 'users/' + userId + '/healthTracking/' + Date.now());
+
+        set(healthDataRef, {
+          childName: childName,
+          childAge: childAge,
+          sleepSchedule: sleepSchedule,
+          feeding: feeding,
+          diet: diet,
+          otherNotes: otherNotes,
+          date: new Date().toLocaleString()
+        }).then(() => {
+          alert("Child health data saved successfully!");
+        }).catch((error) => {
+          console.error("Error saving health data:", error);
+        });
+      } else {
+        alert("You need to be logged in to save health data.");
+      }
+    }
+  </script>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="calendar.html">Calendar</a>
+    <a href="medical-records.html">Medical Records</a>
+    <a href="development-tips.html">Development Tips</a>
+    <a href="health-tracking.html">Health Tracking</a>
+    <a href="emergency-contact.html">Emergency Contact</a>
+    <a href="feedback.html">Feedback</a>
+    <a href="connect-parents.html">Connect with Parents</a>
+    <a href="help.html">Help</a>
+    <a href="notifications.html">Notifications</a>
+    <a href="profile.html">Profile</a>
+  </div>
+
+  <!-- Main Content -->
+  <div class="content">
+    <h2>Child Health Tracking</h2>
+
+    <form id="health-form">
+      <div class="form-group">
+        <label for="childName">Child's Name</label>
+        <input type="text" id="childName" class="form-control" placeholder="Enter your child's name" required>
+      </div>
+      <div class="form-group">
+        <label for="childAge">Child's Age (in years)</label>
+        <input type="number" id="childAge" class="form-control" placeholder="Enter age" required>
+      </div>
+      <div class="form-group">
+        <label for="sleepSchedule">Sleep Schedule</label>
+        <input type="text" id="sleepSchedule" class="form-control" placeholder="E.g., Sleeps 8 hours a night" required>
+      </div>
+      <div class="form-group">
+        <label for="feeding">Feeding</label>
+        <textarea id="feeding" class="form-control" placeholder="Describe feeding schedule and diet" rows="3" required></textarea>
+      </div>
+      <div class="form-group">
+        <label for="diet">Diet</label>
+        <textarea id="diet" class="form-control" placeholder="Describe dietary preferences or restrictions" rows="3" required></textarea>
+      </div>
+      <div class="form-group">
+        <label for="otherNotes">Other Health Notes</label>
+        <textarea id="otherNotes" class="form-control" placeholder="Other health-related information" rows="3"></textarea>
+      </div>
+
+      <button type="button" class="btn btn-primary" onclick="saveHealthData()" style="background-color: #990000;">Save Health Data</button>
+      <a href="healthrecords.html" class="btn btn-secondary" style="background-color: #990000;">View Health Records</a>
+    </form>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
